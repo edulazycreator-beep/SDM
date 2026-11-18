@@ -266,3 +266,20 @@ private fun RoundButton(icon: androidx.compose.ui.graphics.vector.ImageVector, l
         colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = Color.Black.copy(alpha = 0.35f), contentColor = White),
     ) { Icon(icon, label, modifier = Modifier.size((sizeDp * 0.5f).dp)) }
 }
+
+/** Shown when the video can't be played, with a way out instead of a black screen. */
+@Composable
+fun PlaybackError(message: String, onRetry: () -> Unit, onOpenWith: () -> Unit, onBack: () -> Unit) {
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.85f)).safeDrawingPadding().padding(24.dp), contentAlignment = Alignment.Center) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("This video can't be played", style = style(18, FontWeight.SemiBold))
+            Text(message, style = style(14, FontWeight.Normal).copy(color = Muted), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.material3.Button(onClick = onOpenWith) { Text("Open with another app") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onRetry) { Text("Try again", style = style(14, FontWeight.SemiBold)) }
+                TextButton(onClick = onBack) { Text("Back", style = style(14, FontWeight.SemiBold)) }
+            }
+        }
+    }
+}

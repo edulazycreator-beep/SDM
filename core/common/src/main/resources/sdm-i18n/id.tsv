@@ -779,3 +779,11 @@ Off	Mati
 Off  ✓	Mati  ✓
 +{} s	+{} dtk
 −{} s	−{} dtk
+This video can't be played	Video ini tidak bisa diputar
+Open with another app	Buka dengan aplikasi lain
+Try again	Coba lagi
+The file was not found. It may have been moved or deleted.	File tidak ditemukan. Mungkin sudah dipindah atau dihapus.
+SDM has no permission to read this file.	SDM tidak punya izin membaca file ini.
+This file's format can't be read by the built-in player.	Format file ini tidak bisa dibaca pemutar bawaan.
+This phone can't decode this video's format.	HP ini tidak bisa memutar format video ini.
+Playback failed ({}).	Pemutaran gagal ({}).

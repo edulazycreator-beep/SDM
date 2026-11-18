@@ -61,6 +61,13 @@ class PlayerActivity : ComponentActivity() {
     @Inject lateinit var db: SdmDatabase
     private var player: ExoPlayer? = null
     private var inPip by mutableStateOf(false)
+    private var error by mutableStateOf<String?>(null)
+    /** For tests: the player and the error shown, if any. */
+    internal val playerForTest: ExoPlayer? get() = player
+    internal val errorForTest: String? get() = error
+    private var withSubtitles = true
+    private lateinit var source: Uri
+    private var mime: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -68,15 +75,16 @@ class PlayerActivity : ComponentActivity() {
         val uri = intent.data ?: run { finish(); return }
         val title = intent.getStringExtra(EXTRA_TITLE) ?: uri.lastPathSegment ?: "Video"
         val p = ExoPlayer.Builder(this).build().also { player = it }
-        lifecycleScope.launch {
-            val subs = sidecarSubtitles(title)
-            val item = MediaItem.Builder().setUri(uri).setSubtitleConfigurations(subs.map { (lang, u) ->
-                MediaItem.SubtitleConfiguration.Builder(Uri.parse(u)).setMimeType(MimeTypes.APPLICATION_SUBRIP).setLanguage(lang).setLabel(lang).build()
-            }).build()
-            p.setMediaItem(item, savedInstanceState?.getLong(KEY_POSITION) ?: 0L)
-            p.prepare()
-            p.playWhenReady = true
-        }
+        source = uri
+        mime = intent.type
+        p.addListener(object : Player.Listener {
+            override fun onPlayerError(e: androidx.media3.common.PlaybackException) {
+                // A subtitle file that can't be read must not stop the video: retry without it once.
+                if (withSubtitles) { withSubtitles = false; load(p, title, p.currentPosition); return }
+                error = describe(e)
+            }
+        })
+        load(p, title, savedInstanceState?.getLong(KEY_POSITION) ?: 0L)
         WindowCompat.getInsetsController(window, window.decorView).apply {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())
@@ -97,9 +105,41 @@ class PlayerActivity : ComponentActivity() {
                         player = p, title = title, inPip = inPip, resizeMode = resize, onResizeMode = { resize = it },
                         onBack = { finish() }, onPip = if (Build.VERSION.SDK_INT >= 26) ({ enterPip() }) else null,
                     )
+                    error?.let { msg ->
+                        PlaybackError(
+                            message = msg,
+                            onRetry = { withSubtitles = true; load(p, title, p.currentPosition) },
+                            onOpenWith = { startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_VIEW).setDataAndType(source, mime ?: "video/*").addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION), com.sdm.core.common.I18n.tr("Open with"))) },
+                            onBack = { finish() },
+                        )
+                    }
                 }
             }
         }
+    }
+
+    private fun load(p: ExoPlayer, title: String, position: Long) {
+        error = null
+        lifecycleScope.launch {
+            val subs = if (withSubtitles) sidecarSubtitles(title) else emptyList()
+            val item = MediaItem.Builder().setUri(source).setSubtitleConfigurations(subs.map { (lang, u) ->
+                MediaItem.SubtitleConfiguration.Builder(Uri.parse(u)).setMimeType(MimeTypes.APPLICATION_SUBRIP).setLanguage(lang).setLabel(lang).build()
+            }).build()
+            p.setMediaItem(item, position)
+            p.prepare()
+            p.playWhenReady = true
+        }
+    }
+
+    private fun describe(e: androidx.media3.common.PlaybackException): String = when (e.errorCode) {
+        androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND -> "The file was not found. It may have been moved or deleted."
+        androidx.media3.common.PlaybackException.ERROR_CODE_IO_NO_PERMISSION -> "SDM has no permission to read this file."
+        androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_MALFORMED,
+        androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> "This file's format can't be read by the built-in player."
+        androidx.media3.common.PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
+        androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED,
+        androidx.media3.common.PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES -> "This phone can't decode this video's format."
+        else -> "Playback failed (${e.errorCodeName})."
     }
 
     private suspend fun sidecarSubtitles(title: String): List<Pair<String, String>> = runCatching {
