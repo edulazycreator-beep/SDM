@@ -261,7 +261,7 @@ class DownloadCoordinator @Inject constructor(
             // The partial file vanished (deleted by the user or expired): start over in a new file.
             db.segments().clear(id)
             entity = entity.copy(destinationUri = null, downloadedBytes = 0, rangeSupport = RangeSupport.UNKNOWN, etag = null, lastModified = null)
-            dao.update(entity.copy(updatedAt = now()))
+            dao.updatePreservingState(entity.copy(updatedAt = now()))
             event(id, EventType.RESTARTED, "Partial file missing; restarting")
             try { entity = ensureOutput(entity); outputs.open(entity.destinationUri!!) } catch (e2: Exception) { fail(entity, ErrorCode.STORAGE_ERROR, e2.message, null); return }
         } catch (e: Exception) {
@@ -304,7 +304,7 @@ class DownloadCoordinator @Inject constructor(
         if (e.destinationUri != null) return e
         val handle = outputs.create(e.fileName, e.mimeType, e.category, e.destinationType, e.destinationTreeUri)
         val updated = e.copy(destinationUri = handle.uri, fileName = handle.displayName, destinationLabel = handle.label, updatedAt = now())
-        dao.update(updated)
+        dao.updatePreservingState(updated)
         return updated
     }
 
@@ -342,7 +342,7 @@ class DownloadCoordinator @Inject constructor(
                     run.job.cancel()
                     return@launch
                 }
-                dao.update(e.copy(
+                dao.updatePreservingState(e.copy(
                     resolvedUrl = info.finalUrl, totalBytes = info.totalBytes ?: e.totalBytes,
                     mimeType = e.mimeType ?: info.contentType?.substringBefore(';'),
                     rangeSupport = if (info.rangeSupported) RangeSupport.SUPPORTED else RangeSupport.UNSUPPORTED,
@@ -411,7 +411,7 @@ class DownloadCoordinator @Inject constructor(
             httpStatus = null, activeConnections = 0, connectionsUsed = r.stats.connectionsUsed, segmentFailures = e.segmentFailures + r.stats.segmentFailures,
             throttled = r.stats.throttled, resolvedUrl = r.finalUrl,
         )
-        dao.update(e)
+        dao.updatePreservingState(e)
         if (transition(id, DownloadEvent.VERIFIED) == DownloadState.COMPLETED) {
             db.segments().clear(id)
             event(id, EventType.COMPLETED, "Completed ${com.sdm.core.common.Formatters.bytes(r.totalBytes)} with ${r.stats.connectionsUsed} connection(s)")
@@ -425,7 +425,7 @@ class DownloadCoordinator @Inject constructor(
         val e = dao.get(id) ?: return
         val err = r.error
         val code = mapError(err)
-        dao.update(e.copy(activeMillis = e.activeMillis + r.stats.activeMillis, activeConnections = 0, segmentFailures = e.segmentFailures + r.stats.segmentFailures, throttled = e.throttled || r.stats.throttled, updatedAt = now()))
+        dao.updatePreservingState(e.copy(activeMillis = e.activeMillis + r.stats.activeMillis, activeConnections = 0, segmentFailures = e.segmentFailures + r.stats.segmentFailures, throttled = e.throttled || r.stats.throttled, updatedAt = now()))
         analytics.session(e, r.stats, succeeded = false)
         val net = network.state.value
         if (!net.connected && (err.kind == ErrorKind.NETWORK || err.kind == ErrorKind.TIMEOUT)) {
@@ -438,7 +438,7 @@ class DownloadCoordinator @Inject constructor(
         if (err.retryable && retryRule && e.retryCount < maxRetries) {
             val base = 5_000L * (1L shl e.retryCount.coerceAtMost(10))
             val delayMs = (err.retryAfterMillis ?: (Random.nextDouble(0.5, 1.0) * base).toLong()).coerceAtMost(settings.retryBackoffCapSeconds * 1000L)
-            dao.update(dao.get(id)!!.copy(retryCount = e.retryCount + 1, nextRetryAt = now() + delayMs, errorCode = code.name, errorMessage = Redactor.text(err.message), httpStatus = err.httpStatus, updatedAt = now()))
+            dao.updatePreservingState(dao.get(id)!!.copy(retryCount = e.retryCount + 1, nextRetryAt = now() + delayMs, errorCode = code.name, errorMessage = Redactor.text(err.message), httpStatus = err.httpStatus, updatedAt = now()))
             transition(id, DownloadEvent.RETRY_LATER)
             event(id, EventType.RETRY_SCHEDULED, "${code.title}; retry ${e.retryCount + 1}/$maxRetries in ${delayMs / 1000}s", err.httpStatus, code)
             notifier.paused(e.toDomain(), "Retrying: ${code.title}")
@@ -449,7 +449,7 @@ class DownloadCoordinator @Inject constructor(
 
     private suspend fun fail(e: DownloadEntity, code: ErrorCode, message: String?, status: Int?) {
         val cur = dao.get(e.id) ?: return
-        dao.update(cur.copy(errorCode = code.name, errorMessage = message?.let { Redactor.text(it) }, httpStatus = status, activeConnections = 0, updatedAt = now()))
+        dao.updatePreservingState(cur.copy(errorCode = code.name, errorMessage = message?.let { Redactor.text(it) }, httpStatus = status, activeConnections = 0, updatedAt = now()))
         transition(e.id, DownloadEvent.FAIL)
         event(e.id, EventType.FAILED, message ?: code.title, status, code)
         notifier.failed(cur.toDomain(), code.title, code.suggestion)
@@ -472,7 +472,7 @@ class DownloadCoordinator @Inject constructor(
     /** Lands a cancelled run in the state its stop reason calls for. */
     private suspend fun onStopped(id: Long, reason: StopReason) {
         val e = dao.get(id) ?: return
-        dao.update(e.copy(activeConnections = 0, updatedAt = now()))
+        dao.updatePreservingState(e.copy(activeConnections = 0, updatedAt = now()))
         notifier.cancel(id)
         when (reason) {
             StopReason.USER_PAUSE -> { transition(id, DownloadEvent.PAUSE); event(id, EventType.PAUSED, "Paused by user") }
@@ -530,7 +530,7 @@ class DownloadCoordinator @Inject constructor(
 
     suspend fun resume(id: Long) {
         val d = dao.get(id) ?: return
-        if (d.state == DownloadState.FAILED) dao.update(d.copy(retryCount = 0, nextRetryAt = null, errorCode = null, errorMessage = null, httpStatus = null, updatedAt = now()))
+        if (d.state == DownloadState.FAILED) dao.updatePreservingState(d.copy(retryCount = 0, nextRetryAt = null, errorCode = null, errorMessage = null, httpStatus = null, updatedAt = now()))
         if (transition(id, DownloadEvent.RESUME) != null) {
             dao.setHold(id, HoldReason.NONE)
             event(id, EventType.RESUMED, "Resumed")
@@ -546,7 +546,7 @@ class DownloadCoordinator @Inject constructor(
             if (deletePartial && d.state != DownloadState.COMPLETED) {
                 d.destinationUri?.let { outputs.delete(it) }
                 db.segments().clear(id)
-                dao.update(dao.get(id)!!.copy(destinationUri = null, downloadedBytes = 0, updatedAt = now()))
+                dao.updatePreservingState(dao.get(id)!!.copy(destinationUri = null, downloadedBytes = 0, updatedAt = now()))
             }
             event(id, EventType.CANCELLED, "Cancelled by user")
         }
@@ -560,7 +560,7 @@ class DownloadCoordinator @Inject constructor(
         if (d.state != DownloadState.COMPLETED) d.destinationUri?.let { outputs.delete(it) }
         db.segments().clear(id)
         val fresh = dao.get(id) ?: return
-        dao.update(fresh.copy(
+        dao.updatePreservingState(fresh.copy(
             destinationUri = if (d.state == DownloadState.COMPLETED) null else null, downloadedBytes = 0, rangeSupport = RangeSupport.UNKNOWN,
             etag = null, lastModified = null, retryCount = 0, nextRetryAt = null, errorCode = null, errorMessage = null, httpStatus = null,
             completedAt = null, checksumActual = null, activeMillis = 0, updatedAt = now(), holdReason = HoldReason.NONE,
@@ -581,7 +581,7 @@ class DownloadCoordinator @Inject constructor(
     }
 
     suspend fun setSpeedLimit(id: Long, bytesPerSecond: Long) {
-        dao.get(id)?.let { dao.update(it.copy(speedLimitBps = bytesPerSecond.coerceAtLeast(0), updatedAt = now())) }
+        dao.get(id)?.let { dao.updatePreservingState(it.copy(speedLimitBps = bytesPerSecond.coerceAtLeast(0), updatedAt = now())) }
         running[id]?.limiter?.bytesPerSecond = bytesPerSecond
     }
 

@@ -17,6 +17,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -397,7 +398,7 @@ class BrowserViewModel @Inject constructor(
 
 @Composable
 fun BrowserScreen(initialUrl: String? = null) {
-    val activity = LocalContext.current as ComponentActivity
+    val activity = LocalActivity.current as? ComponentActivity ?: return
     val vm: BrowserViewModel = hiltViewModel(activity)
     val app = LocalAppActions.current
     val ctx = LocalContext.current

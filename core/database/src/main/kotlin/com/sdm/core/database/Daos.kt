@@ -53,6 +53,16 @@ interface DownloadDao {
     @Update
     suspend fun update(entity: DownloadEntity)
 
+    /**
+     * Metadata update that never changes the state: state, hold reason and version are re-read in the
+     * same transaction, so a concurrent compare-and-set state change cannot be overwritten.
+     */
+    @Transaction
+    suspend fun updatePreservingState(entity: DownloadEntity) {
+        val current = get(entity.id) ?: return
+        update(entity.copy(state = current.state, holdReason = current.holdReason, version = current.version))
+    }
+
     /** Compare-and-set state change: returns 0 when another writer changed the state first. */
     @Query("UPDATE downloads SET state = :to, holdReason = :hold, updatedAt = :now, version = version + 1 WHERE id = :id AND state = :from")
     suspend fun casState(id: Long, from: DownloadState, to: DownloadState, hold: com.sdm.domain.HoldReason, now: Long): Int

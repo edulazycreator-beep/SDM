@@ -161,7 +161,7 @@ class DownloadRepository @Inject constructor(
 
     suspend fun update(id: Long, transform: (DownloadEntity) -> DownloadEntity) {
         val e = dao.get(id) ?: return
-        dao.update(transform(e).copy(updatedAt = System.currentTimeMillis()))
+        dao.updatePreservingState(transform(e).copy(updatedAt = System.currentTimeMillis()))
         coordinator.signal()
     }
 
@@ -183,7 +183,7 @@ class DownloadRepository @Inject constructor(
         if (!Urls.isValidHttpUrl(newUrl)) return false
         val e = dao.get(id) ?: return false
         if (e.state.isActive) return false
-        dao.update(e.copy(originalUrl = newUrl.trim(), resolvedUrl = null, errorCode = null, errorMessage = null, httpStatus = null, updatedAt = System.currentTimeMillis()))
+        dao.updatePreservingState(e.copy(originalUrl = newUrl.trim(), resolvedUrl = null, errorCode = null, errorMessage = null, httpStatus = null, updatedAt = System.currentTimeMillis()))
         db.events().insert(EventEntity(downloadId = id, timestamp = System.currentTimeMillis(), type = EventType.RESUMED, detail = "Link updated to ${Redactor.url(newUrl)}"))
         return true
     }
@@ -192,10 +192,10 @@ class DownloadRepository @Inject constructor(
         val e = dao.get(id) ?: return false
         val clean = FileNames.sanitize(newName)
         val uri = e.destinationUri
-        if (uri == null) { dao.update(e.copy(fileName = clean, category = FileCategory.of(clean, e.mimeType), updatedAt = System.currentTimeMillis())); return true }
+        if (uri == null) { dao.updatePreservingState(e.copy(fileName = clean, category = FileCategory.of(clean, e.mimeType), updatedAt = System.currentTimeMillis())); return true }
         if (e.state.isActive) return false
         val renamed = outputs.rename(uri, clean) ?: return false
-        dao.update(e.copy(fileName = clean, destinationUri = renamed, updatedAt = System.currentTimeMillis()))
+        dao.updatePreservingState(e.copy(fileName = clean, destinationUri = renamed, updatedAt = System.currentTimeMillis()))
         db.files().delete(listOf(uri))
         return true
     }
@@ -204,7 +204,7 @@ class DownloadRepository @Inject constructor(
     suspend fun changeDestination(id: Long, treeUri: String?, label: String?, category: FileCategory?): Boolean {
         val e = dao.get(id) ?: return false
         if (e.destinationUri != null || e.downloadedBytes > 0) return false
-        dao.update(e.copy(
+        dao.updatePreservingState(e.copy(
             destinationType = if (treeUri != null) DestinationType.SAF_TREE else outputs.defaultType(), destinationTreeUri = treeUri,
             category = category ?: e.category, destinationLabel = label ?: "Download/SDM/${(category ?: e.category).folder}", updatedAt = System.currentTimeMillis(),
         ))
