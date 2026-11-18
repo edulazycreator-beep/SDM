@@ -53,6 +53,7 @@ data class Download(
     val startedAt: Long?,
     val completedAt: Long?,
     val activeMillis: Long,
+    val important: Boolean = false,
 ) {
     val progressPercent: Int get() = com.sdm.core.common.Formatters.percent(downloadedBytes, totalBytes)
     val averageSpeedBps: Long get() = if (activeMillis <= 0) 0 else downloadedBytes * 1000 / activeMillis

@@ -65,7 +65,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -135,7 +134,7 @@ class DownloadCoordinator @Inject constructor(
                 signal()
             }
         }
-        scope.launch { network.state.distinctUntilChanged().collect { onNetwork(it) } }
+        scope.launch { network.state.collect { onNetwork(it) } }
         scope.launch {
             combine(network.state, battery.state, rules.rules) { n, b, r -> Triple(n, b, r) }.collect { (n, b, r) ->
                 val facts = EnvironmentFacts(n.connected, n.connected && !n.unmetered, b.percent, b.charging, storage.primary().freeBytes)

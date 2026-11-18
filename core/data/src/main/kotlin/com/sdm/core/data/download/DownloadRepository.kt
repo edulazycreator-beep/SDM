@@ -211,6 +211,29 @@ class DownloadRepository @Inject constructor(
         return true
     }
 
+    /**
+     * Saves content the browser already holds (blob: and data: URLs, which cannot be re-requested)
+     * as a completed download.
+     */
+    suspend fun saveBytes(name: String, mime: String?, bytes: ByteArray, sourcePage: String?): Long {
+        val clean = FileNames.sanitize(name)
+        val category = FileCategory.of(clean, mime)
+        val type = outputs.defaultType()
+        val handle = outputs.create(clean, mime, category, type, null)
+        outputs.open(handle.uri).use { it.write(0, bytes, 0, bytes.size); it.sync() }
+        val finalUri = outputs.finalize(handle.uri, type, null, handle.displayName, mime)
+        val now = System.currentTimeMillis()
+        val id = dao.insert(DownloadEntity(
+            originalUrl = sourcePage ?: "about:blank", fileName = handle.displayName, mimeType = mime, category = category, totalBytes = bytes.size.toLong(),
+            downloadedBytes = bytes.size.toLong(), state = DownloadState.COMPLETED, destinationType = type, destinationUri = finalUri,
+            destinationLabel = handle.label, rangeSupport = RangeSupport.UNSUPPORTED, sourcePageUrl = sourcePage, createdAt = now, startedAt = now,
+            completedAt = now, updatedAt = now,
+        ))
+        db.files().upsert(listOf(com.sdm.core.database.FileIndexEntity(finalUri, handle.displayName, bytes.size.toLong(), mime, category, now, handle.label, id)))
+        db.events().insert(EventEntity(downloadId = id, timestamp = now, type = EventType.COMPLETED, detail = "Saved from browser page content"))
+        return id
+    }
+
     suspend fun search(query: String): List<Download> = dao.search("%${query.trim()}%").map { it.toDomain() }
 
     fun rangeLabel(r: RangeSupport) = when (r) { RangeSupport.SUPPORTED -> "Supported"; RangeSupport.UNSUPPORTED -> "Not supported"; RangeSupport.UNKNOWN -> "Not checked yet" }
