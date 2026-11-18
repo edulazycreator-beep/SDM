@@ -175,7 +175,8 @@ jobs:
           tag_name: build-${{ github.run_number }}
           target_commitish: ${{ github.sha }}
           name: SDM build ${{ github.run_number }} (${{ github.ref_name }})
-          prerelease: true
+          prerelease: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}
+          make_latest: true
           body: |
             Automated build from `${{ github.ref_name }}` at ${{ github.sha }}.
             - `SDM-release-*.apk`: optimized (R8) build. Signed with the debug key unless release signing secrets are configured, so it installs for testing but is not a Play upload.

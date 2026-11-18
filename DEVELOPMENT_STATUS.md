@@ -8,7 +8,7 @@ All seven phases of the master spec have been implemented to a first complete ve
 test pass in CI, but the multi-device matrix and long-running/stress tests on real hardware have not
 been run yet (see "Not yet verified").
 
-## Build status (CI run for commit 425e0e5, build 9)
+## Build status (CI runs for commits 425e0e5 and 298d8c4, builds 9–10)
 
 | Check | Result |
 | --- | --- |
@@ -18,7 +18,7 @@ been run yet (see "Not yet verified").
 | JVM unit tests | 54 run, 0 failed |
 | Instrumented tests, emulator API 34 | 9 run, 0 failed |
 | Release APK (R8) installs, launches and handles a share intent without crash | Pass |
-| Release APK / AAB / debug APK published to GitHub Releases | Pass |
+| Release APK / AAB / debug APK published to GitHub Releases | Pass (latest: [Releases › Latest](https://github.com/edulazycreator-beep/SDM/releases/latest)) |
 
 ### Unit tests (JVM)
 - `core:common` — Redactor (headers, query tokens, user-info, free text), file-name sanitizing and
