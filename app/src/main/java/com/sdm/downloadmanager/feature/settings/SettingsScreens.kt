@@ -288,6 +288,8 @@ fun AboutScreen() {
         Text("SDM has no accounts, ads or analytics servers. Statistics stay on this device. Cookies used for downloads are encrypted with a key that never leaves the device and are excluded from exports and diagnostic reports.", style = MaterialTheme.typography.bodyMedium)
         SectionHeader("Limits")
         Text("SDM downloads files and unprotected streams your browser session can access. It does not bypass logins, paywalls or DRM.", style = MaterialTheme.typography.bodyMedium)
+        SectionHeader("Open-source components")
+        Text("Built with AndroidX, Jetpack Compose, Media3, OkHttp, Apache Commons Net, JSch, libtorrent (libtorrent4j), Mozilla Readability and the StevenBlack/hosts list (MIT). Full list and licenses: docs/THIRD_PARTY_NOTICES.md in the source repository.", style = MaterialTheme.typography.bodySmall)
         TextButton(onClick = { ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) { Text("App info and permissions") }
         Icon(Icons.Filled.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
     }

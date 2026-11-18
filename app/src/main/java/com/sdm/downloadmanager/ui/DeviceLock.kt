@@ -36,6 +36,7 @@ object DeviceLock {
         }
     }
 
+    @androidx.annotation.RequiresApi(28)
     private fun callback(onResult: (Boolean) -> Unit) = object : BiometricPrompt.AuthenticationCallback() {
         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult?) = onResult(true)
         override fun onAuthenticationError(errorCode: Int, errString: CharSequence?) = onResult(false)

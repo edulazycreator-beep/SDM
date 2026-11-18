@@ -92,12 +92,12 @@ class RemoteFileEngineTest {
         assertTrue("$r", r is TransferResult.Completed)
         assertArrayEquals(body, f.readBytes())
         assertTrue("host key remembered", known.readText().isNotBlank())
+        val wrong = run(engine, "sftp://127.0.0.1:${ssh.port}/pub/file.bin", temp(), checksum = ExpectedChecksum("SHA-256", "00"))
+        assertTrue(wrong is TransferResult.Failed && wrong.error.kind == ErrorKind.CHECKSUM_MISMATCH)
         // A different server key for the same host is refused (possible impostor).
         known.writeText(known.readLines().joinToString("\n") { l -> l.split('\t').let { "${it[0]}\t${it[1]}\t" + java.util.Base64.getEncoder().encodeToString(ByteArray(51) { 7 }) } } + "\n")
         val impostor = run(engine, "sftp://127.0.0.1:${ssh.port}/pub/file.bin", temp())
         assertTrue("$impostor", impostor is TransferResult.Failed && impostor.error.kind == ErrorKind.UNSUPPORTED)
-        val wrong = run(engine, "sftp://127.0.0.1:${ssh.port}/pub/file.bin", temp(), checksum = ExpectedChecksum("SHA-256", "00"))
-        assertTrue(wrong is TransferResult.Failed && wrong.error.kind == ErrorKind.CHECKSUM_MISMATCH)
     }
 
     @Test fun credentialsAreSplitFromUrl() {

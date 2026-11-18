@@ -762,3 +762,9 @@ unstable	tidak stabil
 {} · {} · avg {}	{} · {} · rata-rata {}
 • Copy a link: SDM offers to download it when you open the app.\n• Use the built-in browser: downloads carry your sign-in cookies.\n• Share a link to SDM from any app.\n• Set rules and schedules in Settings.	• Salin link: SDM menawarkan untuk mengunduhnya saat aplikasi dibuka.\n• Pakai browser bawaan: unduhan membawa cookie login kamu.\n• Bagikan link ke SDM dari aplikasi mana saja.\n• Atur aturan dan jadwal di Setelan.
 …and {} more	…dan {} lagi
+Open-source components	Komponen sumber terbuka
+Built with AndroidX, Jetpack Compose, Media3, OkHttp, Apache Commons Net, JSch, libtorrent (libtorrent4j), Mozilla Readability and the StevenBlack/hosts list (MIT). Full list and licenses: docs/THIRD_PARTY_NOTICES.md in the source repository.	Dibuat dengan AndroidX, Jetpack Compose, Media3, OkHttp, Apache Commons Net, JSch, libtorrent (libtorrent4j), Mozilla Readability, dan daftar StevenBlack/hosts (MIT). Daftar lengkap dan lisensinya: docs/THIRD_PARTY_NOTICES.md di repositori sumber.
+Language	Bahasa
+English	English
+Bahasa Indonesia	Bahasa Indonesia
+Close	Tutup

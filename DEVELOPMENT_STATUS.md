@@ -92,7 +92,25 @@ been run yet (see "Not yet verified").
   recognised.
 - On-device test `StreamDownloadTest`: pasted `.m3u8` (master + 3 MPEG-TS segments, H.264 + AAC,
   fixture in `testdata/hls`) → quality chip → download → MP4 with both tracks in MediaStore.
-- Not yet verified on a device: real-world sites (detection while playing, remux of their streams).
+- Not yet verified on a device: real-world sites (detection while playing, remux of their streams),
+  torrents with real swarms, FTP/SFTP against real servers, widget and tile on launchers.
+
+## UI improvements and new features (2026-11-18, second round)
+- UI: two-line download rows with stream badge and estimated sizes, thumbnails for finished
+  videos/images, swipe-to-delete with Undo, "Download again", actionable empty states, simpler
+  Home (three primary actions + More), floating buttons move above snackbars.
+- Accessibility: `AccessibilityTest` runs the Accessibility Test Framework on Home, Downloads,
+  Files, Settings and Browser.
+- Language: Bahasa Indonesia (ADR-0008), picker in Appearance.
+- Streams: DASH (unprotected), subtitles saved as .srt (HLS/DASH WebVTT), audio only (.m4a),
+  audio language choice, built-in Media3 player with subtitles and picture-in-picture.
+- Downloads: "Download files on this page" in the browser, ZIP extraction (button and optional
+  automatic), mirror links, FTP/FTPS/SFTP (ADR-0009), send links from a computer (local page with a
+  6-digit code while the screen is open), BitTorrent (ADR-0009).
+- Browser: ad/tracker blocking (StevenBlack/hosts, MIT), site settings (ads, desktop, JavaScript,
+  pop-ups as tabs, third-party cookies), reader view (Mozilla Readability, Apache-2.0).
+- Quick access: home-screen widget, Quick Settings tile, lock-protected private folder.
+- Database v3 (migration 2→3: streamSubtitles, streamAudioOnly, mirrors).
 
 ## UI fixes (2026-11-18)
 - Top bars drew under the status bar: the outer app Scaffold consumed the system-bar insets

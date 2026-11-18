@@ -64,7 +64,8 @@ User guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
 
 ## Limits
 
-SDM downloads what your browser session can access. It can save unprotected HLS video streams
-(saved as MP4) and detects videos playing in its browser, but it does not bypass logins, paywalls or
-DRM, does not record live streams and does not support DASH yet (ADR-0007). Android limits background work; see ADR-0003 for how SDM keeps
+SDM downloads what your browser session can access: files over HTTP(S), FTP/FTPS/SFTP and
+BitTorrent, and unprotected HLS/DASH video streams (saved as MP4, with subtitles), including videos
+playing in its browser. It does not bypass logins, paywalls or DRM and does not record live
+streams (ADR-0007, ADR-0009). Available in English and Bahasa Indonesia. Android limits background work; see ADR-0003 for how SDM keeps
 long downloads running within those rules.

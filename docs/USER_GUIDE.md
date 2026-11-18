@@ -9,7 +9,21 @@
   bottom right lists every video found on the page, with qualities and estimated sizes. Streams
   (HLS) are saved as MP4. DRM-protected videos, live streams and DASH streams can't be downloaded;
   SDM tells you which applies.
-- Paste an `.m3u8` link to pick a quality and save the stream.
+- Paste an `.m3u8` or `.mpd` link to pick a quality, an audio language, subtitles, or "audio only".
+- In the browser menu, "Download files on this page" lists every file link on the page.
+- Magnet links and .torrent files download the torrent's files (folder per torrent).
+- `ftp://`, `ftps://` and `sftp://` links work; a password in the link is stored encrypted.
+- Home › More actions › "Send links from a computer" shows an address and code to use on a PC on
+  the same Wi-Fi.
+- Mirror links (in the add dialog) are used in order if the main link keeps failing.
+
+## Other features
+- Built-in player for videos and music (subtitles saved next to a video are offered).
+- ZIP files: "Extract here" in the download details, or turn on automatic extraction in Settings.
+- Private folder (Files › lock icon): opens with fingerprint, face or screen lock.
+- Home-screen widget and a Quick Settings tile ("Download copied link").
+- Browser: ad blocking, site settings, reader view.
+- Language: Settings › Appearance › Language.
 
 The confirmation dialog shows name, size, type, source and destination, and lets you choose
 connections (1–16), network (any / unmetered / Wi-Fi), priority, start time, speed limit and an
