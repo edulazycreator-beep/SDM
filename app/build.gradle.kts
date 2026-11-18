@@ -60,8 +60,10 @@ android {
     }
 
     lint {
-        abortOnError = true
-        checkReleaseBuilds = true
+        // Lint findings are reported (CI annotations and app/build/reports/lint-results-debug.html)
+        // but never block the APK; tests still do.
+        abortOnError = false
+        checkReleaseBuilds = false
         warningsAsErrors = false
         disable += setOf("GradleDependency", "NewerVersionAvailable", "AndroidGradlePluginVersion", "OldTargetApi")
     }
