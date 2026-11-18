@@ -8,7 +8,7 @@ All seven phases of the master spec have been implemented to a first complete ve
 test pass in CI, but the multi-device matrix and long-running/stress tests on real hardware have not
 been run yet (see "Not yet verified").
 
-## Build status (CI runs for commits 425e0e5 and 298d8c4, builds 9–10)
+## Build status (CI run for commit 9a7395e, build 17)
 
 | Check | Result |
 | --- | --- |
@@ -16,7 +16,7 @@ been run yet (see "Not yet verified").
 | Module dependency rules (`checkModuleDependencies`) | Pass |
 | Android Lint (`:app:lintDebug`, errors abort) | Pass |
 | JVM unit tests | 63 run, 0 failed |
-| Instrumented tests, emulator API 34 | 9 run, 0 failed |
+| Instrumented tests, emulator API 34 | 10 run, 0 failed (incl. HLS → MP4 stream download) |
 | Release APK (R8) installs, launches and handles a share intent without crash | Pass |
 | Release APK / AAB / debug APK published to GitHub Releases | Pass (latest: [Releases › Latest](https://github.com/edulazycreator-beep/SDM/releases/latest)) |
 
