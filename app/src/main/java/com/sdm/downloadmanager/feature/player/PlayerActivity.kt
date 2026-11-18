@@ -54,6 +54,7 @@ import javax.inject.Inject
  * (`name.<lang>.srt`) are offered automatically. Supports picture-in-picture.
  */
 @AndroidEntryPoint
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class) // PlayerView subtitle button
 class PlayerActivity : ComponentActivity() {
     @Inject lateinit var db: SdmDatabase
     private var player: ExoPlayer? = null
