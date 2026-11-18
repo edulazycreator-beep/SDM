@@ -215,6 +215,36 @@ class FileRepository @Inject constructor(
         incompleteBytes,
     )
 
+    /**
+     * Partial files no download refers to any more (left by a crash between creating and recording
+     * an output). Only listed here; they are deleted after the user confirms (spec section 27).
+     */
+    suspend fun orphanedPartials(referenced: Set<String>): List<Pair<String, Long>> = withContext(Dispatchers.IO) {
+        val out = mutableListOf<Pair<String, Long>>()
+        File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: return@withContext out, "SDM").walkTopDown()
+            .filter { it.isFile && Uri.fromFile(it).toString() !in referenced && (it.name.startsWith(".staging-") || it.length() == 0L) }
+            .forEach { out += Uri.fromFile(it).toString() to it.length() }
+        if (Build.VERSION.SDK_INT >= 30) {
+            val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+            val args = android.os.Bundle().apply {
+                putInt(MediaStore.QUERY_ARG_MATCH_PENDING, MediaStore.MATCH_ONLY)
+                putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, "${MediaStore.Downloads.RELATIVE_PATH} LIKE ?")
+                putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, arrayOf("${Environment.DIRECTORY_DOWNLOADS}/SDM/%"))
+            }
+            runCatching {
+                resolver.query(collection, arrayOf(MediaStore.Downloads._ID, MediaStore.Downloads.SIZE), args, null)?.use { c ->
+                    while (c.moveToNext()) {
+                        val uri = ContentUris.withAppendedId(collection, c.getLong(0)).toString()
+                        if (uri !in referenced) out += uri to c.getLong(1)
+                    }
+                }
+            }
+        }
+        out
+    }
+
+    suspend fun deletePartials(uris: List<String>): Int = uris.count { outputs.delete(it) }
+
     /** URI another app can open: content URIs as-is, app-private files through FileProvider. */
     fun shareableUri(uri: String): Uri {
         val u = Uri.parse(uri)

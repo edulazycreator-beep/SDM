@@ -106,14 +106,40 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: ./gradlew --no-daemon connectedDebugAndroidTest 2>&1 | tee connected.log
-      - name: Report instrumented failures
-        if: failure()
+          script: |
+            bash -c "set -o pipefail; ./gradlew --no-daemon connectedDebugAndroidTest 2>&1 | tee connected.log"
+            ./gradlew --no-daemon assembleRelease
+            adb uninstall com.sdm.downloadmanager || true
+            adb install -r app/build/outputs/apk/release/app-release.apk
+            adb logcat -c
+            adb shell am start -W -n com.sdm.downloadmanager/.MainActivity
+            sleep 10
+            adb shell am start -W -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT https://example.com/file.zip -n com.sdm.downloadmanager/.MainActivity
+            sleep 8
+            adb logcat -d > release-smoke.log
+            if grep -E "FATAL EXCEPTION|AndroidRuntime: Process: com.sdm" release-smoke.log; then echo "::error title=Release smoke test::The minified release APK crashed"; grep -A30 "FATAL EXCEPTION" release-smoke.log | head -60; exit 1; fi
+            adb shell pidof com.sdm.downloadmanager && echo "Release APK running without crash"
+      - name: Report instrumented results
+        if: always()
         shell: bash
         run: |
-          grep -E "FAILED|Exception|Error|expected|at com\.sdm|What went wrong" connected.log | head -120 > errors.txt || true
-          msg=$(sed -e 's/%/%25/g' errors.txt | awk 'BEGIN{ORS="%0A"} {print}')
-          echo "::error title=Instrumented test errors::${msg}"
+          python3 - <<'PY'
+          import glob, re, html
+          out = []
+          for f in glob.glob('**/build/outputs/androidTest-results/**/*.xml', recursive=True):
+              t = open(f, encoding='utf-8', errors='replace').read()
+              for m in re.finditer(r'<testcase name="([^"]+)" classname="([^"]+)"[^>]*?(?:/>|>(.*?)</testcase>)', t, re.S):
+                  body = m.group(3) or ''
+                  if '<failure' in body:
+                      msg = html.unescape(re.search(r'<failure[^>]*>(.*?)</failure>', body, re.S).group(1))
+                      out.append(f"FAIL {m.group(2)}.{m.group(1)}\n{msg[:1800]}")
+                  else:
+                      out.append(f"PASS {m.group(2)}.{m.group(1)}")
+          text = "\n".join(out) or "No instrumented results found"
+          print(text)
+          enc = text.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+          print(f"::notice title=Instrumented results::{enc[:60000]}")
+          PY
       - name: Upload instrumented reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -121,6 +147,7 @@ jobs:
           name: instrumented-reports
           path: |
             connected.log
+            release-smoke.log
             **/build/reports/androidTests/**
             **/build/outputs/androidTest-results/**
           retention-days: 7
