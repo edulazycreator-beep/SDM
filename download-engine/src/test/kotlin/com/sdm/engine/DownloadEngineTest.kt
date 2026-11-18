@@ -241,7 +241,7 @@ class DownloadEngineTest {
         val r = runBlocking {
             FileSink(f).use { sink ->
                 engine.run(request("/th.bin", connections = 4), sink, RateLimiter(), object : TransferListener by rec {
-                    override fun onProbed(info: ProbeInfo) { rec.onProbed(info); repeat(2) { res.scriptedStatuses += 503 to "0" } }
+                    override fun onProbed(info: ProbeInfo) { rec.onProbed(info); repeat(2) { res.scriptedStatuses += 503 to "1" } }
                 })
             }
         }
