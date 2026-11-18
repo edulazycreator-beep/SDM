@@ -68,6 +68,12 @@ class FileRepository @Inject constructor(
         DocumentFile.fromTreeUri(context, p.uri)?.let { GrantedFolder(p.uri.toString(), it.name ?: "Folder") }
     }
 
+    /** Keeps access to a folder the user picked (system folder picker) across restarts. */
+    fun grant(treeUri: Uri): GrantedFolder {
+        resolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        return GrantedFolder(treeUri.toString(), DocumentFile.fromTreeUri(context, treeUri)?.name ?: "Folder")
+    }
+
     suspend fun addFolder(treeUri: Uri) = withContext(Dispatchers.IO) {
         resolver.takePersistableUriPermission(treeUri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         refresh()

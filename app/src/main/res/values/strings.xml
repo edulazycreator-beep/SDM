@@ -1,4 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">SDM</string>
+    <string name="app_full_name">Smart Download Manager</string>
+    <string name="tagline">Download Smarter. Faster. Better.</string>
+    <string name="share_to_sdm">Download with SDM</string>
 </resources>

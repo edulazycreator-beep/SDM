@@ -1,16 +1,54 @@
 package com.sdm.downloadmanager
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.material3.Text
-import com.sdm.core.designsystem.SdmTheme
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import com.sdm.core.common.Urls
+import com.sdm.core.data.notifications.Notifier
+import com.sdm.downloadmanager.ui.AddRequest
+import com.sdm.downloadmanager.ui.AppViewModel
+import com.sdm.downloadmanager.ui.SdmApp
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    private val appViewModel: AppViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
-        setContent { SdmTheme { Text("SDM") } }
+        splash.setKeepOnScreenCondition { appViewModel.settings.value == null }
+        enableEdgeToEdge()
+        handleIntent(intent)
+        setContent { SdmApp(appViewModel) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Android only lets the focused foreground app read the clipboard (spec section 9).
+        if (hasFocus) appViewModel.onWindowFocused()
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        intent ?: return
+        val downloadId = intent.getLongExtra(Notifier.EXTRA_DOWNLOAD_ID, -1)
+        if (downloadId > 0) appViewModel.openDownload(downloadId)
+        when (intent.action) {
+            Intent.ACTION_SEND -> {
+                val text = intent.getStringExtra(Intent.EXTRA_TEXT).orEmpty()
+                val urls = Urls.extract(text)
+                if (urls.isNotEmpty()) appViewModel.requestAdd(AddRequest(urls))
+            }
+            Intent.ACTION_VIEW -> intent.dataString?.takeIf { Urls.isValidHttpUrl(it) }?.let { appViewModel.requestAdd(AddRequest(listOf(it), mime = intent.type)) }
+        }
     }
 }
