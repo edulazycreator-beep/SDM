@@ -1,5 +1,6 @@
 package com.sdm.core.database
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -68,6 +69,11 @@ data class DownloadEntity(
     val streamAudioUrl: String? = null,
     /** Quality chosen by the user, e.g. "1080p · 4.0 Mbps". */
     val streamLabel: String? = null,
+    /** Subtitle tracks to save as .srt, one per line: language TAB name TAB playlist/representation. */
+    val streamSubtitles: String? = null,
+    @ColumnInfo(defaultValue = "0") val streamAudioOnly: Boolean = false,
+    /** Alternative links for the same file, one per line, tried in order when this one fails. */
+    val mirrors: String? = null,
 )
 
 @Entity(

@@ -212,6 +212,10 @@ fun DownloadSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         Text("Longest wait between retries: ${Formatters.duration(s.retryBackoffCapSeconds.toLong())}", style = MaterialTheme.typography.bodyLarge)
         Slider(s.retryBackoffCapSeconds.toFloat(), { v -> vm.update { it.copy(retryBackoffCapSeconds = v.roundToInt()) } }, valueRange = 10f..3600f)
         SwitchRow("Resume interrupted downloads on start", s.autoResumeOnStart, { v -> vm.update { it.copy(autoResumeOnStart = v) } })
+        SwitchRow("Extract ZIP files automatically", s.autoExtractZip, { v -> vm.update { it.copy(autoExtractZip = v) } }, "Unpacks into a folder next to the .zip when it finishes. The .zip is kept.")
+        SectionHeader("Browser")
+        SwitchRow("Block ads and trackers", s.adBlock, { v -> vm.update { it.copy(adBlock = v) } }, "Faster pages and fewer ad videos in the media list. Can be turned off per site.")
+        SwitchRow("Offer to download playing videos", s.announceVideos, { v -> vm.update { it.copy(announceVideos = v) } }, "Shows \"Video detected — Download\" when a video starts playing")
         SectionHeader("Notifications")
         SwitchRow("Notification per download", s.perDownloadNotifications, { v -> vm.update { it.copy(perDownloadNotifications = v) } }, "Progress, speed and remaining time with pause and cancel buttons")
         val ctx = LocalContext.current

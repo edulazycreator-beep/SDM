@@ -89,13 +89,7 @@ class HlsDownloader(private val clientProvider: () -> OkHttpClient, val globalLi
         var segmentsTotal = 0
         fun stats() = TransferStats(segmentsTotal, failures.get(), false, false, request.concurrency, session.get(), (System.nanoTime() - started) / 1_000_000, false)
         return try {
-            val (text, finalUrl) = fetchText(request.playlistUrl, request.headers)
-            if (!HlsParser.isPlaylist(text)) throw TransferFailure(TransferError(ErrorKind.INVALID_RESPONSE, "Not an HLS playlist"))
-            val media = if (HlsParser.isMaster(text)) {
-                val best = HlsParser.parseMaster(text, finalUrl).variants.maxByOrNull { it.bandwidth ?: 0 } ?: throw TransferFailure(TransferError(ErrorKind.INVALID_RESPONSE, "Playlist has no variants"))
-                val (t2, u2) = fetchText(best.uri, request.headers, request.playlistUrl)
-                HlsParser.parseMedia(t2, u2)
-            } else HlsParser.parseMedia(text, finalUrl)
+            val (media, finalUrl) = resolveMedia(request.playlistUrl, request.headers)
             if (!media.endList) throw TransferFailure(TransferError(ErrorKind.UNSUPPORTED, "This is a live stream; only finished (on-demand) videos can be downloaded"))
             if (media.drm) throw TransferFailure(TransferError(ErrorKind.UNSUPPORTED, "This stream is DRM-protected and cannot be downloaded"))
             if (media.segments.isEmpty()) throw TransferFailure(TransferError(ErrorKind.INVALID_RESPONSE, "Playlist has no segments"))
@@ -116,6 +110,64 @@ class HlsDownloader(private val clientProvider: () -> OkHttpClient, val globalLi
         } catch (e: IOException) {
             TransferResult.Failed(TransferError(if (e is SocketTimeoutException) ErrorKind.TIMEOUT else ErrorKind.NETWORK, "${e.javaClass.simpleName}: ${e.message}"), stats())
         }
+    }
+
+    /**
+     * The media playlist behind [url]: an HLS media playlist, the best variant of an HLS master
+     * playlist, or one representation of a DASH manifest (a [DashParser.ref]).
+     */
+    suspend fun resolveMedia(url: String, headers: Map<String, String>, credentialsFor: String = url): Pair<HlsMedia, String> {
+        DashParser.parseRef(url)?.let { (mpdUrl, repId) ->
+            val (xml, finalUrl) = fetchText(mpdUrl, headers, credentialsFor)
+            if (!DashParser.isManifest(xml)) throw TransferFailure(TransferError(ErrorKind.INVALID_RESPONSE, "Not a DASH manifest"))
+            val manifest = runCatching { DashParser.parse(xml, finalUrl) }.getOrElse { throw TransferFailure(TransferError(ErrorKind.INVALID_RESPONSE, "Unreadable DASH manifest")) }
+            if (manifest.dynamic) throw TransferFailure(TransferError(ErrorKind.UNSUPPORTED, "This is a live stream; only finished (on-demand) videos can be downloaded"))
+            val rep = manifest.representations.firstOrNull { it.id == repId }
+                ?: throw TransferFailure(TransferError(ErrorKind.RESOURCE_CHANGED, "The selected quality is no longer offered by the server"))
+            if (rep.isProtected) throw TransferFailure(TransferError(ErrorKind.UNSUPPORTED, "This stream is DRM-protected and cannot be downloaded"))
+            val single = rep.segments as? DashSegments.Single
+            val length = single?.let { probeLength(it.url, headers, credentialsFor) }
+            return DashParser.media(rep, length) to finalUrl
+        }
+        val (text, finalUrl) = fetchText(url, headers, credentialsFor)
+        if (!HlsParser.isPlaylist(text)) throw TransferFailure(TransferError(ErrorKind.INVALID_RESPONSE, "Not an HLS playlist"))
+        val media = if (HlsParser.isMaster(text)) {
+            val best = HlsParser.parseMaster(text, finalUrl).variants.maxByOrNull { it.bandwidth ?: 0 } ?: throw TransferFailure(TransferError(ErrorKind.INVALID_RESPONSE, "Playlist has no variants"))
+            val (t2, u2) = fetchText(best.uri, headers, credentialsFor)
+            HlsParser.parseMedia(t2, u2)
+        } else HlsParser.parseMedia(text, finalUrl)
+        return media to finalUrl
+    }
+
+    /** Total length of a file from a one-byte range request, or null when the server doesn't say. */
+    suspend fun probeLength(url: String, headers: Map<String, String>, credentialsFor: String = url): Long? {
+        val req = Request.Builder().url(url).engineDefaults(scopedHeaders(headers, credentialsFor, url)).header("Range", "bytes=0-0").build()
+        return withContext(Dispatchers.IO) { client().newCall(req).await() }.use { r ->
+            when (r.code) {
+                206 -> r.header("Content-Range")?.substringAfter('/')?.trim()?.toLongOrNull()
+                200 -> r.body.contentLength().takeIf { it > 0 }
+                else -> throw HttpStatusException(r.code, null)
+            }
+        }
+    }
+
+    /**
+     * Downloads a subtitle track (an HLS WebVTT playlist or a DASH text representation) and returns
+     * it as SubRip text. [credentialsFor] is the URL of the video's playlist.
+     */
+    suspend fun fetchSubtitles(ref: String, headers: Map<String, String>, credentialsFor: String): String {
+        val (media, _) = resolveMedia(ref, headers, credentialsFor)
+        val parts = media.segments.take(5000).map { seg ->
+            val b = Request.Builder().url(seg.uri).engineDefaults(scopedHeaders(headers, credentialsFor, seg.uri))
+            seg.byteRange?.let { b.header("Range", "bytes=${it.first}-${it.last}") }
+            withContext(Dispatchers.IO) {
+                client().newCall(b.build()).await().use { r ->
+                    if (!r.isSuccessful) throw HttpStatusException(r.code, null)
+                    r.body.string()
+                }
+            }
+        }
+        return WebVtt.toSrt(parts)
     }
 
     private suspend fun download(

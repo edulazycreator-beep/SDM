@@ -1,5 +1,6 @@
 package com.sdm.downloadmanager.feature.add
 
+import androidx.compose.material3.Switch
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -100,6 +101,12 @@ sealed interface AddStep {
         val checksum: String,
         val stream: com.sdm.engine.hls.StreamInfo? = null,
         val streamOption: com.sdm.engine.hls.StreamOption? = null,
+        val audioTrack: com.sdm.engine.hls.AudioTrack? = null,
+        /** URLs of subtitle tracks to save next to the video. */
+        val subtitles: Set<String> = emptySet(),
+        val audioOnly: Boolean = false,
+        /** Alternative links for the same file, one per line. */
+        val mirrorsText: String = "",
     ) : AddStep
     data class Batch(val urls: List<String>, val startPaused: Boolean = false) : AddStep
     data class Done(val message: String) : AddStep
@@ -131,23 +138,32 @@ class AddDownloadViewModel @Inject constructor(
     fun submitInput(text: String) {
         val urls = Urls.extract(text)
         when {
-            urls.isEmpty() -> _step.value = AddStep.Input(text, "Enter a valid http:// or https:// link")
+            urls.isEmpty() -> _step.value = AddStep.Input(text, "Enter a valid link (http, https, FTP or SFTP)")
             urls.size > 1 -> _step.value = AddStep.Batch(urls)
             else -> inspect(urls.first())
         }
     }
 
-    private fun inspect(url: String) = viewModelScope.launch {
+    private fun inspect(rawUrl: String) = viewModelScope.launch {
         _step.value = AddStep.Inspecting
+        // ftp://user:password@host/... : the login moves into the encrypted headers, never into the stored link.
+        var url = rawUrl
+        if (com.sdm.engine.remote.RemoteFileEngine.handles(rawUrl)) {
+            val (clean, login) = com.sdm.engine.remote.RemoteLogin.split(rawUrl)
+            if (login != null) {
+                url = clean
+                request = (request ?: AddRequest(listOf(clean))).let { it.copy(urls = listOf(clean), headers = it.headers + login.header()) }
+            }
+        }
         val r = request
-        if (r?.streamHint == true || com.sdm.engine.hls.HlsParser.streamKindOfUrl(url) != null || com.sdm.engine.hls.HlsParser.isHlsContentType(r?.mime)) {
+        if (r?.streamHint == true || com.sdm.engine.hls.HlsParser.streamKindOfUrl(url) != null || com.sdm.engine.hls.HlsParser.isHlsContentType(r?.mime) || r?.mime?.contains("dash+xml") == true) {
             inspectStream(url); return@launch
         }
         val info = repo.inspect(url, r?.headers.orEmpty(), r?.contentDisposition, r?.mime).let { i ->
             val hinted = r?.fileNameHint?.let { FileNames.sanitize(it) }
             if (i.sizeBytes == null && r?.sizeHint != null && r.sizeHint > 0) i.copy(sizeBytes = r.sizeHint, fileName = hinted ?: i.fileName) else if (hinted != null) i.copy(fileName = hinted) else i
         }
-        if (com.sdm.engine.hls.HlsParser.isHlsContentType(info.mimeType)) { inspectStream(url); return@launch }
+        if (com.sdm.engine.hls.HlsParser.isHlsContentType(info.mimeType) || info.mimeType?.contains("dash+xml") == true) { inspectStream(url); return@launch }
         val s = settings.current()
         val decision = repo.applyRules(info)
         val dup = repo.findDuplicate(info.url, info.fileName, info.sizeBytes)
@@ -162,6 +178,13 @@ class AddDownloadViewModel @Inject constructor(
         )
     }
 
+    /** Pre-selects subtitles in the device language (or the stream's default track). */
+    private fun defaultSubtitles(stream: com.sdm.engine.hls.StreamInfo): Set<String> {
+        val lang = java.util.Locale.getDefault().language
+        val match = stream.subtitles.filter { it.language?.substringBefore('-')?.equals(lang, true) == true }
+        return (match.ifEmpty { stream.subtitles.filter { it.isDefault } }).take(1).map { it.url }.toSet()
+    }
+
     private suspend fun inspectStream(url: String) {
         val r = request
         val s = settings.current()
@@ -171,7 +194,7 @@ class AddDownloadViewModel @Inject constructor(
         }
         val option = stream.options.firstOrNull()
         val title = (r?.titleHint?.takeIf { it.isNotBlank() } ?: FileNames.fromUrl(r?.sourcePage ?: url)?.let { FileNames.baseName(it) } ?: "video").take(80)
-        val name = FileNames.sanitize("$title.mp4")
+        val name = FileNames.sanitize(if (stream.options.isNotEmpty() && stream.options.all { it.height == null }) "$title.m4a" else "$title.mp4")
         val info = LinkInfo(url, url, name, "video/mp4", option?.estimatedBytes, FileCategory.VIDEO, true, stream.blockedReason)
         val decision = repo.applyRules(info)
         val dup = repo.findDuplicate(option?.videoPlaylistUrl ?: url, name, null)
@@ -180,6 +203,9 @@ class AddDownloadViewModel @Inject constructor(
             info = info, fileName = name, decision = decision, duplicate = dup, recommendation = null, connections = 4,
             policy = decision.networkPolicy ?: s.networkPolicy, priority = Priority.NORMAL, category = FileCategory.VIDEO, folder = folder,
             startAt = null, startPaused = false, speedLimitKb = "", checksumAlgorithm = "SHA-256", checksum = "", stream = stream, streamOption = option,
+            audioTrack = stream.audioFor(option).let { a -> a.firstOrNull { it.url == option?.audioPlaylistUrl } ?: a.firstOrNull { it.isDefault } ?: a.firstOrNull() },
+            subtitles = defaultSubtitles(stream),
+            audioOnly = option != null && option.height == null && stream.options.all { it.height == null },
         )
     }
 
@@ -202,14 +228,23 @@ class AddDownloadViewModel @Inject constructor(
         val opt = c.streamOption
         if (c.stream != null) {
             if (opt == null || c.stream.blockedReason != null) return@launch
+            val audio = c.audioTrack
+            val source = if (c.audioOnly) c.stream.audioOnlySource(opt, audio) ?: opt.videoPlaylistUrl else opt.videoPlaylistUrl
+            val streamName = if (c.audioOnly) FileNames.baseName(name) + ".m4a" else FileNames.baseName(name) + ".mp4"
             repo.enqueue(NewDownload(
-                url = opt.videoPlaylistUrl, fileName = name, mimeType = "video/mp4", sizeBytes = opt.estimatedBytes, headers = r?.headers.orEmpty(),
-                sourcePageUrl = r?.sourcePage, category = FileCategory.VIDEO, treeUri = c.folder?.treeUri, treeLabel = c.folder?.name,
+                url = source, fileName = streamName, mimeType = if (c.audioOnly) "audio/mp4" else "video/mp4",
+                sizeBytes = if (c.audioOnly) audio?.bandwidth?.let { b -> c.stream.durationSec?.let { (b / 8.0 * it).toLong() } } else opt.estimatedBytes,
+                headers = r?.headers.orEmpty(), sourcePageUrl = r?.sourcePage, category = if (c.audioOnly) FileCategory.MUSIC else FileCategory.VIDEO,
+                treeUri = c.folder?.treeUri, treeLabel = c.folder?.name,
                 connections = c.connections, networkPolicy = c.policy, speedLimitBps = (c.speedLimitKb.toLongOrNull() ?: 0) * 1024,
                 priority = c.priority, scheduledAt = c.startAt, startPaused = c.startPaused,
-                streamType = com.sdm.core.data.download.STREAM_HLS, streamAudioUrl = opt.audioPlaylistUrl, streamLabel = opt.label,
+                streamType = if (c.stream.kind == com.sdm.engine.hls.StreamKind.DASH) com.sdm.core.data.download.STREAM_DASH else com.sdm.core.data.download.STREAM_HLS,
+                streamAudioUrl = if (c.audioOnly) null else (audio?.url ?: opt.audioPlaylistUrl),
+                streamLabel = if (c.audioOnly) "Audio" + (audio?.let { " · ${it.name}" } ?: "") else opt.label + (audio?.takeIf { c.stream.audioFor(opt).size > 1 }?.let { " · ${it.name}" } ?: ""),
+                streamSubtitles = if (c.audioOnly) emptyList() else c.stream.subtitles.filter { it.url in c.subtitles },
+                streamAudioOnly = c.audioOnly,
             ))
-            _step.value = AddStep.Done("Added $name")
+            _step.value = AddStep.Done("Added $streamName")
             return@launch
         }
         repo.enqueue(NewDownload(
@@ -218,6 +253,7 @@ class AddDownloadViewModel @Inject constructor(
             connections = c.connections, networkPolicy = c.policy, speedLimitBps = (c.speedLimitKb.toLongOrNull() ?: 0) * 1024,
             priority = c.priority, scheduledAt = c.startAt, checksumAlgorithm = c.checksumAlgorithm.takeIf { c.checksum.isNotBlank() },
             checksumExpected = c.checksum.ifBlank { null }, startPaused = c.startPaused,
+            mirrors = c.mirrorsText.lines(),
         ))
         _step.value = AddStep.Done("Added ${name}")
     }
@@ -310,19 +346,44 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                         s.info.error?.let { Warning(it) }
                         s.stream?.let { st ->
                             Text(
-                                "HLS video stream" + (st.durationSec?.let { " · ${Formatters.duration(it.toLong())}" } ?: "") + if (st.encrypted && !st.drm) " · AES-128" else "",
+                                "${st.kind.name} video stream" + (st.durationSec?.let { " · ${Formatters.duration(it.toLong())}" } ?: "") + if (st.encrypted && !st.drm) " · AES-128" else "",
                                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
                             )
                             if (st.options.isNotEmpty()) {
                                 Text("Quality", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
                                 FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                     st.options.forEach { o ->
-                                        FilterChip(s.streamOption == o, { vm.update { it.copy(streamOption = o, info = it.info.copy(sizeBytes = o.estimatedBytes)) } }, {
+                                        FilterChip(s.streamOption == o, {
+                                            vm.update { c ->
+                                                val tracks = st.audioFor(o)
+                                                val keep = tracks.firstOrNull { it.language == c.audioTrack?.language && it.name == c.audioTrack?.name }
+                                                c.copy(streamOption = o, info = c.info.copy(sizeBytes = o.estimatedBytes), audioTrack = keep ?: tracks.firstOrNull { it.url == o.audioPlaylistUrl } ?: tracks.firstOrNull())
+                                            }
+                                        }, {
                                             Text(o.label + (o.estimatedBytes?.let { " · ~${Formatters.bytes(it)}" } ?: ""))
                                         })
                                     }
                                 }
-                                Text("Saved as MP4 (audio and video combined). Sizes are estimates from the stream bitrate.", style = MaterialTheme.typography.bodySmall)
+                                val audios = st.audioFor(s.streamOption)
+                                if (audios.size > 1) {
+                                    Text("Audio", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        audios.forEach { a -> FilterChip(s.audioTrack?.url == a.url, { vm.update { it.copy(audioTrack = a) } }, { Text(a.name) }) }
+                                    }
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                                    Text("Audio only (.m4a)", modifier = Modifier.weight(1f))
+                                    Switch(s.audioOnly, { v -> vm.update { it.copy(audioOnly = v) } })
+                                }
+                                if (!s.audioOnly && st.subtitles.isNotEmpty()) {
+                                    Text("Subtitles (saved as .srt next to the video)", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        st.subtitles.forEach { t ->
+                                            FilterChip(t.url in s.subtitles, { vm.update { c -> c.copy(subtitles = if (t.url in c.subtitles) c.subtitles - t.url else c.subtitles + t.url) } }, { Text(t.name) })
+                                        }
+                                    }
+                                }
+                                Text(if (s.audioOnly) "Saves only the sound as M4A." else "Saved as MP4 (audio and video combined). Sizes are estimates from the stream bitrate.", style = MaterialTheme.typography.bodySmall)
                             }
                         }
                         if (s.decision.askConfirmation) Warning("Rule: this is a large file (${Formatters.bytes(s.info.sizeBytes)}). Confirm to download.")
@@ -360,6 +421,10 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                         }
                         OutlinedTextField(s.speedLimitKb, { v -> vm.update { it.copy(speedLimitKb = v.filter(Char::isDigit).take(7)) } }, Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text("Speed limit (KB/s, empty = unlimited)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
                         if (s.stream == null) OutlinedTextField(s.checksum, { v -> vm.update { it.copy(checksum = v.trim()) } }, Modifier.fillMaxWidth().padding(top = 4.dp), label = { Text("Expected checksum (optional)") }, singleLine = true)
+                        if (s.stream == null) OutlinedTextField(
+                            s.mirrorsText, { v -> vm.update { it.copy(mirrorsText = v) } }, Modifier.fillMaxWidth().padding(top = 4.dp),
+                            label = { Text("Mirror links (optional)") }, supportingText = { Text("One per line. Used in order if this link fails.") }, minLines = 1, maxLines = 4,
+                        )
                         if (s.stream == null && s.checksum.isNotBlank()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("MD5", "SHA-1", "SHA-256", "SHA-512").forEach { a -> FilterChip(s.checksumAlgorithm == a, { vm.update { it.copy(checksumAlgorithm = a) } }, { Text(a) }) }
                         }

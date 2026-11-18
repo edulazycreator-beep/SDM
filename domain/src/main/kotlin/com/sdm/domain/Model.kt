@@ -56,6 +56,7 @@ data class Download(
     val important: Boolean = false,
     val streamType: String? = null,
     val streamLabel: String? = null,
+    val streamAudioOnly: Boolean = false,
 ) {
     val isStream: Boolean get() = streamType != null
     val progressPercent: Int get() = com.sdm.core.common.Formatters.percent(downloadedBytes, totalBytes)

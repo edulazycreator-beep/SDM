@@ -85,7 +85,24 @@ class DetailsViewModel @Inject constructor(
     private val repo: DownloadRepository,
     private val files: FileRepository,
     private val diagnostics: DiagnosticsRepository,
+    private val archives: com.sdm.core.data.archive.ArchiveExtractor,
 ) : ViewModel() {
+    val extracting = MutableStateFlow(false)
+
+    fun extract(d: com.sdm.domain.Download) {
+        val uri = d.destinationUri ?: return
+        if (extracting.value) return
+        extracting.value = true
+        viewModelScope.launch {
+            val r = runCatching { archives.extractZip(uri, d.fileName, d.destinationType, null) }
+            extracting.value = false
+            _message.value = r.fold(
+                { res -> "Extracted ${res.files} file(s) into folder \"${res.folder}\"" + if (res.skipped > 0) " · ${res.skipped} skipped" else "" },
+                { e -> e.message ?: "Could not extract" },
+            )
+        }
+    }
+
     private val id = MutableStateFlow(-1L)
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
@@ -183,13 +200,20 @@ fun DetailsScreen(id: Long, vm: DetailsViewModel = hiltViewModel()) {
                         dl.state == DownloadState.PAUSED -> Button(onClick = vm::resume) { Text("Resume") }
                         dl.state == DownloadState.FAILED -> Button(onClick = vm::resume) { Text("Retry") }
                         dl.state == DownloadState.COMPLETED -> dl.destinationUri?.let { uri ->
-                            Button(onClick = { ctx.openFile(vm.shareUri(uri), dl.mimeType) }) { Text("Open") }
+                            Button(onClick = { ctx.openFile(vm.shareUri(uri), dl.mimeType, dl.fileName) }) {
+                                Text(if (com.sdm.downloadmanager.feature.player.PlayerActivity.canPlay(dl.mimeType)) "Play" else "Open")
+                            }
+                            if (com.sdm.downloadmanager.feature.player.PlayerActivity.canPlay(dl.mimeType)) OutlinedButton(onClick = { ctx.openFile(vm.shareUri(uri), dl.mimeType, chooser = true) }) { Text("Open with…") }
                             OutlinedButton(onClick = { ctx.shareFiles(listOf(vm.shareUri(uri)), listOf(dl.mimeType)) }) { Text("Share") }
+                            if (com.sdm.core.data.archive.ArchiveExtractor.isZip(dl.fileName, dl.mimeType)) {
+                                val busy by vm.extracting.collectAsState()
+                                OutlinedButton(onClick = { vm.extract(dl) }, enabled = !busy) { Text(if (busy) "Extracting…" else "Extract here") }
+                            }
                         }
                         else -> Unit
                     }
                     if (!dl.state.isTerminal) OutlinedButton(onClick = vm::cancel) { Text("Cancel") }
-                    OutlinedButton(onClick = vm::restart) { Text("Restart") }
+                    OutlinedButton(onClick = vm::restart) { Text(if (dl.state == DownloadState.COMPLETED) "Download again" else "Restart") }
                     OutlinedButton(onClick = { confirmDelete = true }) { Text("Delete") }
                 }
                 SectionHeader("File")

@@ -29,6 +29,15 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: Resolve Gradle plugins (retries flaky repository lookups)
+        shell: bash
+        run: |
+          for i in 1 2 3 4; do
+            ./gradlew --no-daemon -q help && exit 0
+            echo "Plugin resolution failed (attempt $i); retrying in 20 s"; sleep 20
+          done
+          exit 1
+
       - name: Build and test
         id: gradle
         shell: bash
@@ -94,6 +103,15 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Resolve Gradle plugins (retries flaky repository lookups)
+        shell: bash
+        run: |
+          for i in 1 2 3 4; do
+            ./gradlew --no-daemon -q help && exit 0
+            echo "Plugin resolution failed (attempt $i); retrying in 20 s"; sleep 20
+          done
+          exit 1
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -132,7 +150,7 @@ jobs:
                   body = m.group(3) or ''
                   if '<failure' in body:
                       msg = html.unescape(re.search(r'<failure[^>]*>(.*?)</failure>', body, re.S).group(1))
-                      out.append(f"FAIL {m.group(2)}.{m.group(1)}\n{msg[:1800]}")
+                      out.append(f"FAIL {m.group(2)}.{m.group(1)}\n{msg[:4000]}")
                   else:
                       out.append(f"PASS {m.group(2)}.{m.group(1)}")
           text = "\n".join(out) or "No instrumented results found"

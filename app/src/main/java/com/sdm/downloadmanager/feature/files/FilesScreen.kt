@@ -237,7 +237,7 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
                 } else if (ui.grid) {
                     LazyVerticalGrid(GridCells.Adaptive(120.dp), Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(sp.m)) {
                         items(ui.visible, key = { it.uri }) { f ->
-                            Card(Modifier.padding(4.dp).combinedClickable(onClick = { if (selecting) vm.toggle(f.uri) else ctx.openFile(vm.shareUri(f), f.mimeType) }, onLongClick = { app.haptic(); vm.toggle(f.uri) })) {
+                            Card(Modifier.padding(4.dp).combinedClickable(onClick = { if (selecting) vm.toggle(f.uri) else ctx.openFile(vm.shareUri(f), f.mimeType, f.name) }, onLongClick = { app.haptic(); vm.toggle(f.uri) })) {
                                 Column(Modifier.padding(10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                                     Box { CategoryBadge(f.category, size = 56); if (f.uri in ui.selected) Checkbox(true, { vm.toggle(f.uri) }) }
                                     Text(f.name, style = MaterialTheme.typography.labelMedium, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -251,7 +251,7 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
                         items(ui.visible, key = { it.uri }) { f ->
                             var menu by remember { mutableStateOf(false) }
                             Row(
-                                Modifier.fillMaxWidth().combinedClickable(onClick = { if (selecting) vm.toggle(f.uri) else ctx.openFile(vm.shareUri(f), f.mimeType) }, onLongClick = { app.haptic(); vm.toggle(f.uri) })
+                                Modifier.fillMaxWidth().combinedClickable(onClick = { if (selecting) vm.toggle(f.uri) else ctx.openFile(vm.shareUri(f), f.mimeType, f.name) }, onLongClick = { app.haptic(); vm.toggle(f.uri) })
                                     .padding(horizontal = sp.l, vertical = sp.listItemVertical),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -264,7 +264,8 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
                                 Box {
                                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "File actions") }
                                     DropdownMenu(menu, { menu = false }) {
-                                        DropdownMenuItem(text = { Text("Open") }, onClick = { menu = false; ctx.openFile(vm.shareUri(f), f.mimeType) })
+                                        DropdownMenuItem(text = { Text("Open") }, onClick = { menu = false; ctx.openFile(vm.shareUri(f), f.mimeType, f.name) })
+                                        if (com.sdm.downloadmanager.feature.player.PlayerActivity.canPlay(f.mimeType)) DropdownMenuItem(text = { Text("Open with…") }, onClick = { menu = false; ctx.openFile(vm.shareUri(f), f.mimeType, chooser = true) })
                                         DropdownMenuItem(text = { Text("Share") }, onClick = { menu = false; ctx.shareFiles(listOf(vm.shareUri(f)), listOf(f.mimeType)) })
                                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renameItem = f })
                                         DropdownMenuItem(text = { Text("Details and checksum") }, onClick = { menu = false; details = f })

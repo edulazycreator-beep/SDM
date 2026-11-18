@@ -66,6 +66,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
     implementation(project(":core:data"))
     implementation(project(":core:designsystem"))
     implementation(libs.androidx.core.ktx)

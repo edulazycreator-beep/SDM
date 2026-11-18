@@ -72,6 +72,10 @@ data class NewDownload(
     val streamType: String? = null,
     val streamAudioUrl: String? = null,
     val streamLabel: String? = null,
+    val streamSubtitles: List<com.sdm.engine.hls.SubtitleTrack> = emptyList(),
+    val streamAudioOnly: Boolean = false,
+    /** Alternative links for the same file. */
+    val mirrors: List<String> = emptyList(),
 )
 
 @Singleton
@@ -85,6 +89,7 @@ class DownloadRepository @Inject constructor(
     private val analytics: AnalyticsRecorder,
     private val outputs: OutputStore,
     private val streams: com.sdm.engine.hls.StreamInspector,
+    private val remote: com.sdm.engine.remote.RemoteFileEngine,
 ) {
     private val dao = db.downloads()
 
@@ -103,7 +108,8 @@ class DownloadRepository @Inject constructor(
     /** Reads only response headers; never downloads the body. */
     suspend fun inspect(url: String, headers: Map<String, String> = emptyMap(), contentDispositionHint: String? = null, mimeHint: String? = null): LinkInfo {
         val clean = url.trim()
-        if (!Urls.isValidHttpUrl(clean)) return LinkInfo(clean, clean, FileNames.resolve(clean, contentDispositionHint, mimeHint), mimeHint, null, FileCategory.OTHER, false, "Not a valid http(s) link")
+        if (com.sdm.engine.remote.RemoteFileEngine.handles(clean)) return inspectRemote(clean, headers)
+        if (!Urls.isValidHttpUrl(clean)) return LinkInfo(clean, clean, FileNames.resolve(clean, contentDispositionHint, mimeHint), mimeHint, null, FileCategory.OTHER, false, "Not a valid http(s), FTP or SFTP link")
         val r = engine.inspect(clean, headers)
         return r.fold(
             onSuccess = { info ->
@@ -121,6 +127,17 @@ class DownloadRepository @Inject constructor(
         )
     }
 
+    private suspend fun inspectRemote(url: String, headers: Map<String, String>): LinkInfo {
+        if (!Urls.isValidDownloadUrl(url)) return LinkInfo(url, url, "download", null, null, FileCategory.OTHER, false, "Not a valid FTP or SFTP link")
+        val r = remote.probe(url, headers)
+        val name = FileNames.sanitize(r.getOrNull()?.name ?: FileNames.fromUrl(url) ?: "download")
+        val mime = com.sdm.core.common.MimeTypes.forName(name)
+        return r.fold(
+            { info -> LinkInfo(url, url, name, mime, info.size, FileCategory.of(name, mime), true, null) },
+            { e -> LinkInfo(url, url, name, mime, null, FileCategory.of(name, mime), true, "Could not read file details: ${Redactor.text(e.message ?: e.javaClass.simpleName)}") },
+        )
+    }
+
     /** Lists qualities of an HLS stream (playlists only) and whether it can be downloaded. */
     suspend fun inspectStream(url: String, headers: Map<String, String> = emptyMap()): Result<com.sdm.engine.hls.StreamInfo> =
         runCatching { streams.inspect(url.trim(), headers) }
@@ -135,7 +152,12 @@ class DownloadRepository @Inject constructor(
     suspend fun recommendation(url: String, userMax: Int): Recommendation =
         SpeedIntelligence.recommend(Urls.host(url), analytics.observations(), userMax, settings.current().speedProfile)
 
-    suspend fun enqueue(n: NewDownload): Long {
+    suspend fun enqueue(input: NewDownload): Long {
+        // Never store FTP/SFTP passwords in the link itself: move them into the encrypted headers.
+        val n = if (com.sdm.engine.remote.RemoteFileEngine.handles(input.url)) {
+            val (clean, login) = com.sdm.engine.remote.RemoteLogin.split(input.url)
+            if (login == null) input else input.copy(url = clean, headers = input.headers + login.header())
+        } else input
         val now = System.currentTimeMillis()
         val treeUri = n.treeUri
         val type = n.destinationType ?: if (treeUri != null) DestinationType.SAF_TREE else outputs.defaultType()
@@ -149,6 +171,11 @@ class DownloadRepository @Inject constructor(
             checksumExpected = n.checksumExpected?.trim()?.ifBlank { null }, sourcePageUrl = n.sourcePageUrl,
             hasSecrets = n.headers.isNotEmpty(), createdAt = now, updatedAt = now,
             streamType = n.streamType, streamAudioUrl = n.streamAudioUrl, streamLabel = n.streamLabel,
+            streamSubtitles = n.streamSubtitles.takeIf { it.isNotEmpty() }?.joinToString("\n") { t ->
+                listOf(t.language.orEmpty(), t.name, t.url).joinToString("\t") { it.replace('\t', ' ').replace('\n', ' ') }
+            },
+            streamAudioOnly = n.streamAudioOnly,
+            mirrors = n.mirrors.map { it.trim() }.filter { com.sdm.core.common.Urls.isValidHttpUrl(it) && it != n.url }.distinct().joinToString("\n").ifBlank { null },
         )
         val id = dao.insert(entity)
         secrets.put(id, n.headers)

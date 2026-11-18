@@ -78,6 +78,8 @@ import javax.inject.Singleton
 import kotlin.random.Random
 
 const val STREAM_HLS = "HLS"
+const val STREAM_DASH = "DASH"
+val STREAM_TYPES = setOf(STREAM_HLS, STREAM_DASH)
 private const val TRACK_DONE = -2L
 
 /** Why a running transfer was stopped; decides the state it lands in. */
@@ -92,6 +94,8 @@ enum class StopReason { USER_PAUSE, USER_CANCEL, NETWORK_LOST, POLICY, RULE, SCH
 class DownloadCoordinator @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val hls: com.sdm.engine.hls.HlsDownloader,
+    private val remoteFiles: com.sdm.engine.remote.RemoteFileEngine,
+    private val archives: dagger.Lazy<com.sdm.core.data.archive.ArchiveExtractor>,
     private val db: SdmDatabase,
     private val engine: DownloadEngine,
     private val outputs: OutputStore,
@@ -257,7 +261,7 @@ class DownloadCoordinator @Inject constructor(
     private suspend fun runDownload(id: Long) {
         var entity = dao.get(id) ?: return
         val run = running[id] ?: return
-        if (entity.streamType == STREAM_HLS) { runStream(id, entity, run); return }
+        if (entity.streamType in STREAM_TYPES) { runStream(id, entity, run); return }
         val sink = try {
             entity = ensureOutput(entity)
             outputs.open(entity.destinationUri!!)
@@ -291,7 +295,8 @@ class DownloadCoordinator @Inject constructor(
         )
         val listener = RunListener(id, run)
         val result = try {
-            engine.run(request, sink, run.limiter, listener)
+            if (com.sdm.engine.remote.RemoteFileEngine.handles(request.url)) remoteFiles.run(request, sink, run.limiter, listener)
+            else engine.run(request, sink, run.limiter, listener)
         } catch (e: CancellationException) {
             withContext(NonCancellable) {
                 listener.awaitPending()
@@ -420,7 +425,9 @@ class DownloadCoordinator @Inject constructor(
      */
     private suspend fun runStream(id: Long, start: DownloadEntity, run: Running) {
         val dir = streamDir(id).apply { mkdirs() }
-        val tracks = listOfNotNull(start.originalUrl to java.io.File(dir, "video.bin"), start.streamAudioUrl?.let { it to java.io.File(dir, "audio.bin") })
+        // Audio only: originalUrl already points at the audio source (separate track or smallest quality).
+        val tracks = if (start.streamAudioOnly) listOf(start.originalUrl to java.io.File(dir, "audio.bin"))
+        else listOfNotNull(start.originalUrl to java.io.File(dir, "video.bin"), start.streamAudioUrl?.let { it to java.io.File(dir, "audio.bin") })
         val headers = if (start.hasSecrets) secrets.get(id) else emptyMap()
         var bytesBefore = 0L
         var stats = com.sdm.engine.TransferStats(0, 0, false, false, 0, 0, 0, false)
@@ -461,21 +468,21 @@ class DownloadCoordinator @Inject constructor(
                 }
             }
         }
-        withContext(NonCancellable) { finishStream(id, tracks.map { it.second }, stats) }
+        withContext(NonCancellable) { finishStream(id, tracks.map { it.second }, stats, headers) }
     }
 
-    private suspend fun finishStream(id: Long, files: List<java.io.File>, stats: com.sdm.engine.TransferStats) {
+    private suspend fun finishStream(id: Long, files: List<java.io.File>, stats: com.sdm.engine.TransferStats, headers: Map<String, String>) {
         if (dao.get(id)?.state == DownloadState.PREPARING) transition(id, DownloadEvent.PROBED)
         transition(id, DownloadEvent.VERIFY)
         val e = dao.get(id) ?: return
         val probe = com.sdm.core.data.media.Remuxer.probe(files)
-        val audioOnly = !probe.hasVideo && probe.hasAudio
+        val audioOnly = e.streamAudioOnly || (!probe.hasVideo && probe.hasAudio)
         val base = com.sdm.core.common.FileNames.baseName(e.fileName)
         val category = if (audioOnly) com.sdm.core.common.FileCategory.MUSIC else com.sdm.core.common.FileCategory.VIDEO
         var mime = if (audioOnly) "audio/mp4" else "video/mp4"
         val result = runCatching {
             var handle = outputs.create("$base.${if (audioOnly) "m4a" else "mp4"}", mime, category, e.destinationType, e.destinationTreeUri)
-            val remuxed = (probe.hasVideo || probe.hasAudio) && outputs.openDescriptor(handle.uri).use { com.sdm.core.data.media.Remuxer.toMp4(files, it.fileDescriptor) }
+            val remuxed = (probe.hasVideo || probe.hasAudio) && outputs.openDescriptor(handle.uri).use { com.sdm.core.data.media.Remuxer.toMp4(files, it.fileDescriptor, audioOnly = audioOnly) }
             if (!remuxed) {
                 outputs.delete(handle.uri)
                 val fmp4 = files.first().inputStream().use { s -> ByteArray(8).also { s.read(it) } }.copyOfRange(4, 8).decodeToString() == "ftyp"
@@ -500,9 +507,30 @@ class DownloadCoordinator @Inject constructor(
             db.segments().clear(id)
             deleteStreamFiles(id)
             event(id, EventType.COMPLETED, "Stream saved as ${handle.displayName} (${com.sdm.core.common.Formatters.bytes(size)})")
+            if (!audioOnly) saveSubtitles(done, handle.displayName, headers)
             analytics.session(done, stats, succeeded = true)
             db.files().upsert(listOf(FileIndexEntity(finalUri, handle.displayName, size, mime, category, now(), handle.label, id, null, null, e.destinationTreeUri)))
             notifier.completed(done.toDomain(), finalUri)
+        }
+    }
+
+    /** Saves chosen subtitle tracks as .srt next to the video. A failed track is logged, not fatal. */
+    private suspend fun saveSubtitles(d: DownloadEntity, videoName: String, headers: Map<String, String>) {
+        val lines = d.streamSubtitles?.lines()?.filter { it.isNotBlank() }.orEmpty()
+        val base = com.sdm.core.common.FileNames.baseName(videoName)
+        for (line in lines) {
+            val (lang, name, url) = line.split('\t').let { Triple(it.getOrElse(0) { "" }, it.getOrElse(1) { "" }, it.getOrElse(2) { "" }) }
+            if (url.isBlank()) continue
+            val tag = lang.ifBlank { name }.replace(Regex("[^A-Za-z0-9-]"), "").take(16).ifBlank { "sub" }
+            runCatching {
+                val srt = hls.fetchSubtitles(url, headers, d.originalUrl)
+                require(srt.isNotBlank()) { "no cues" }
+                val h = outputs.create("$base.$tag.srt", "application/x-subrip", d.category, d.destinationType, d.destinationTreeUri)
+                outputs.writeText(h.uri, srt)
+                val uri = outputs.finalize(h.uri, d.destinationType, d.destinationTreeUri, h.displayName, "application/x-subrip")
+                db.files().upsert(listOf(FileIndexEntity(uri, h.displayName, srt.length.toLong(), "application/x-subrip", d.category, now(), h.label, d.id, null, null, d.destinationTreeUri)))
+                event(d.id, EventType.COMPLETED, "Subtitles saved: ${h.displayName}")
+            }.onFailure { ex -> event(d.id, EventType.SEGMENT_FAILED, "Subtitles ($name) could not be saved: ${com.sdm.core.common.Redactor.text(ex.message ?: ex.javaClass.simpleName)}") }
         }
     }
 
@@ -577,7 +605,15 @@ class DownloadCoordinator @Inject constructor(
             analytics.session(e, r.stats, succeeded = true)
             db.files().upsert(listOf(FileIndexEntity(finalUri, e.fileName, r.totalBytes, e.mimeType, e.category, now(), e.destinationLabel, e.id, if (e.checksumAlgorithm.equals("SHA-256", true) || e.checksumAlgorithm.equals("SHA256", true)) r.checksumHex else null, null, e.destinationTreeUri)))
             notifier.completed(e.toDomain(), finalUri)
+            if (settings.autoExtractZip && com.sdm.core.data.archive.ArchiveExtractor.isZip(e.fileName, e.mimeType)) extractAfterDownload(e, finalUri)
         }
+    }
+
+    /** Auto-extract (opt-in setting). Failures are logged; the archive is always kept. */
+    private fun extractAfterDownload(e: DownloadEntity, uri: String) = scope.launch {
+        val r = runCatching { archives.get().extractZip(uri, e.fileName, e.destinationType, e.destinationTreeUri) }
+        r.onSuccess { res -> event(e.id, EventType.COMPLETED, "Extracted ${res.files} file(s) into ${res.folder}" + if (res.skipped > 0) " (${res.skipped} skipped)" else "") }
+            .onFailure { ex -> event(e.id, EventType.SEGMENT_FAILED, "Could not extract: ${com.sdm.core.common.Redactor.text(ex.message ?: ex.javaClass.simpleName)}") }
     }
 
     private suspend fun onFailed(id: Long, r: TransferResult.Failed) {
@@ -603,7 +639,37 @@ class DownloadCoordinator @Inject constructor(
             notifier.paused(e.toDomain(), "Retrying: ${code.title}")
             return
         }
+        if (switchToMirror(id, e, code, err)) return
         fail(e, code, err.message, err.httpStatus)
+    }
+
+    /**
+     * When the link keeps failing and the user gave mirror links, continue with the next one. The
+     * file starts over (another server's copy can't be trusted to match the bytes already written);
+     * an expected checksum, if set, still verifies the result. Cookies are dropped when the mirror
+     * is on another site.
+     */
+    private suspend fun switchToMirror(id: Long, e: DownloadEntity, code: ErrorCode, err: TransferError): Boolean {
+        val mirrors = e.mirrors?.lines()?.map { it.trim() }?.filter { it.isNotEmpty() }.orEmpty()
+        if (mirrors.isEmpty() || e.streamType != null) return false
+        if (err.kind !in setOf(ErrorKind.HTTP, ErrorKind.NETWORK, ErrorKind.TIMEOUT, ErrorKind.INVALID_RESPONSE, ErrorKind.RESOURCE_CHANGED, ErrorKind.RANGE_MISMATCH)) return false
+        val next = mirrors.first()
+        val sameSite = Urls.host(next) == Urls.host(e.originalUrl)
+        if (!sameSite && e.hasSecrets) {
+            val kept = secrets.get(id).filterKeys { it.lowercase() !in setOf("cookie", "authorization", "proxy-authorization") }
+            secrets.put(id, kept)
+        }
+        e.destinationUri?.let { runCatching { outputs.delete(it) } }
+        db.segments().clear(id)
+        val cur = dao.get(id) ?: return false
+        dao.updatePreservingState(cur.copy(
+            originalUrl = next, resolvedUrl = null, mirrors = mirrors.drop(1).joinToString("\n").ifBlank { null },
+            destinationUri = null, downloadedBytes = 0, rangeSupport = RangeSupport.UNKNOWN, etag = null, lastModified = null,
+            retryCount = 0, nextRetryAt = now() + 1_000, errorCode = code.name, errorMessage = Redactor.text(err.message), httpStatus = err.httpStatus, updatedAt = now(),
+        ))
+        transition(id, DownloadEvent.RETRY_LATER)
+        event(id, EventType.RETRY_SCHEDULED, "${code.title} on ${Urls.host(e.originalUrl)}; switching to mirror ${Urls.host(next)} and starting over", err.httpStatus, code)
+        return true
     }
 
     private suspend fun fail(e: DownloadEntity, code: ErrorCode, message: String?, status: Int?) {

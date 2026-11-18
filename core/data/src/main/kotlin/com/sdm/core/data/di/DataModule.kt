@@ -36,7 +36,7 @@ object DataModule {
                     db.execSQL("INSERT INTO queues(id, name, maxConcurrent, ordering, scheduleJson, paused) VALUES(1, 'Main', 3, 'MANUAL', NULL, 0)")
                 }
             })
-            .addMigrations(SdmDatabase.MIGRATION_1_2)
+            .addMigrations(SdmDatabase.MIGRATION_1_2, SdmDatabase.MIGRATION_2_3)
             .build()
 
     @Provides fun downloadDao(db: SdmDatabase) = db.downloads()
@@ -58,4 +58,9 @@ object DataModule {
 
     @Provides @Singleton
     fun streamInspector(hls: com.sdm.engine.hls.HlsDownloader): com.sdm.engine.hls.StreamInspector = com.sdm.engine.hls.StreamInspector(hls)
+
+    /** FTP/FTPS/SFTP. SFTP host keys are remembered in app storage (trust on first use). */
+    @Provides @Singleton
+    fun remoteFiles(@dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context, engine: DownloadEngine): com.sdm.engine.remote.RemoteFileEngine =
+        com.sdm.engine.remote.RemoteFileEngine(java.io.File(context.filesDir, "sftp_known_hosts"), engine.globalLimiter)
 }

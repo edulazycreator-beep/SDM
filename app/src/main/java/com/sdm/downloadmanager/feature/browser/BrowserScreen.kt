@@ -132,7 +132,7 @@ import javax.inject.Inject
 
 /**
  * A video or audio the browser saw on the page: a direct file, an HLS stream (listed with its
- * qualities once its playlist has been read), or a stream SDM cannot save (DASH, DRM, live).
+ * qualities once its playlist has been read), or a stream SDM cannot save (DRM, live).
  */
 data class DetectedMedia(
     val url: String,
@@ -383,11 +383,8 @@ class BrowserViewModel @Inject constructor(
     private fun observe(tabId: String, url: String) {
         if (!Urls.isValidHttpUrl(url)) return
         when (HlsParser.streamKindOfUrl(url)) {
-            StreamKind.HLS -> onStreamUrl(tabId, url)
-            StreamKind.DASH -> if (scan(tabId).seen.add(url)) addMedia(tabId, DetectedMedia(
-                url, "DASH stream", "DASH", stream = true,
-                blockedReason = "DASH streams (.mpd) are not supported yet; SDM can save HLS streams and direct video files",
-            ))
+            StreamKind.HLS -> onStreamUrl(tabId, url, "HLS")
+            StreamKind.DASH -> onStreamUrl(tabId, url, "DASH")
             null -> {
                 val name = FileNames.fromUrl(url) ?: return
                 val ext = FileNames.extension(name)
@@ -398,10 +395,10 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
-    private fun onStreamUrl(tabId: String, url: String) {
+    private fun onStreamUrl(tabId: String, url: String, kind: String = "HLS") {
         val scan = scan(tabId)
         if (url in scan.children || !scan.seen.add(url)) return
-        addMedia(tabId, DetectedMedia(url, "Video stream", "HLS", stream = true, title = scan.title, pending = true))
+        addMedia(tabId, DetectedMedia(url, "Video stream", kind, stream = true, title = scan.title, pending = true))
         viewModelScope.launch(Dispatchers.IO) {
             val result = downloads.inspectStream(url, headersFor(tabId, url))
             val info = result.getOrNull()
@@ -422,9 +419,10 @@ class BrowserViewModel @Inject constructor(
                 qualities.takeIf { it.isNotEmpty() }?.joinToString(", "),
                 info.durationSec?.let { com.sdm.core.common.Formatters.duration(it.toLong()) },
                 if (info.encrypted && !info.drm) "AES-128" else null,
+                info.subtitles.takeIf { it.isNotEmpty() }?.let { "${it.size} subtitle(s)" },
             ).joinToString(" · ").ifBlank { null }
             updateMedia(tabId, url) {
-                it.copy(pending = false, details = details, sizeBytes = info.options.firstOrNull()?.estimatedBytes, blockedReason = info.blockedReason, title = it.title ?: scan.title)
+                it.copy(kind = info.kind.name, pending = false, details = details, sizeBytes = info.options.firstOrNull()?.estimatedBytes, blockedReason = info.blockedReason, title = it.title ?: scan.title)
             }
         }
     }
@@ -433,7 +431,7 @@ class BrowserViewModel @Inject constructor(
         val scan = scan(tabId)
         if (title.isNotBlank()) scan.title = title.take(120)
         val url = rawUrl.trim()
-        if (event == "stream") { if (Urls.isValidHttpUrl(url)) onStreamUrl(tabId, url); return }
+        if (event == "stream" || event == "dash") { if (Urls.isValidHttpUrl(url)) onStreamUrl(tabId, url, if (event == "dash") "DASH" else "HLS"); return }
         val direct = Urls.isValidHttpUrl(url)
         if (direct) {
             if (HlsParser.streamKindOfUrl(url) != null) observe(tabId, url)
@@ -454,7 +452,7 @@ class BrowserViewModel @Inject constructor(
             var found: DetectedMedia? = null
             for (attempt in 0 until 10) {
                 val media = _ui.value.tabs.firstOrNull { it.id == tabId }?.media.orEmpty()
-                found = if (direct) media.firstOrNull { it.url == url } ?: media.lastOrNull { it.stream && it.kind == "HLS" }
+                found = if (direct) media.firstOrNull { it.url == url } ?: media.lastOrNull { it.stream }
                 else media.lastOrNull { it.stream && it.downloadable } ?: media.lastOrNull { it.stream && !it.pending } ?: media.lastOrNull { it.stream }
                 if (found != null && !found.pending) break
                 kotlinx.coroutines.delay(300)
@@ -462,7 +460,7 @@ class BrowserViewModel @Inject constructor(
             val key = found?.url ?: "unsupported:$url"
             if (!scan.announced.add(key)) return@launch
             updateTab(tabId) { t -> t.copy(media = t.media.map { it.copy(playing = it.url == found?.url) }) }
-            if (tabId != _ui.value.currentId) return@launch
+            if (tabId != _ui.value.currentId || !settings.current().announceVideos) return@launch
             playing.emit(found ?: DetectedMedia(url, "Video", "VIDEO", title = scan.title, blockedReason = "This video's source isn't visible to SDM (it may be protected or use an unsupported format)"))
         }
     }
@@ -486,10 +484,33 @@ class BrowserViewModel @Inject constructor(
         val title = m.title ?: scans[tab.id]?.title ?: tab.title
         return AddRequest(
             urls = listOf(m.url), headers = headersFor(tab.id, m.url), sourcePage = tab.url,
-            mime = if (m.stream) "application/vnd.apple.mpegurl" else null,
+            mime = if (m.stream) (if (m.kind == "DASH") "application/dash+xml" else "application/vnd.apple.mpegurl") else null,
             sizeHint = m.sizeBytes.takeIf { !m.stream }, fileNameHint = if (m.stream) null else m.name,
-            streamHint = m.stream && m.kind == "HLS", titleHint = title,
+            streamHint = m.stream, titleHint = title,
         )
+    }
+
+    /** Lists file links and media on the current page. */
+    fun scanLinks(onResult: (List<PageLink>) -> Unit) {
+        val tab = _ui.value.current ?: return onResult(emptyList())
+        val wv = views[tab.id] ?: return onResult(emptyList())
+        wv.evaluateJavascript(LinkGrabber.SCAN_JS) { json -> onResult(LinkGrabber.parse(json)) }
+    }
+
+    /** Queues the chosen links directly; each gets the cookies of its own site from this tab. */
+    fun downloadLinks(links: List<PageLink>) {
+        val tab = _ui.value.current ?: return
+        viewModelScope.launch {
+            var added = 0; var skipped = 0
+            for (l in links) {
+                if (downloads.findDuplicate(l.url, l.name, null) != null) { skipped++; continue }
+                runCatching {
+                    downloads.enqueue(com.sdm.core.data.download.NewDownload(url = l.url, fileName = FileNames.sanitize(l.name), headers = headersFor(tab.id, l.url), sourcePageUrl = tab.url))
+                    added++
+                }
+            }
+            onMessage?.invoke("Added $added download(s)" + if (skipped > 0) ", skipped $skipped already in SDM" else "")
+        }
     }
 
     fun exitFullscreen() {
@@ -611,10 +632,11 @@ class BrowserViewModel @Inject constructor(
                 }, true);
               });
               function hls(ct){ return !!ct && /mpegurl/i.test(ct); }
+              function dash(ct){ return !!ct && /dash\+xml/i.test(ct); }
               var f = window.fetch;
               if (f) window.fetch = function(){
                 var p = f.apply(this, arguments);
-                p.then(function(r){ try { if (hls(r.headers.get('content-type'))) rep('stream', r.url, null); } catch (e) {} }, function(){});
+                p.then(function(r){ try { var ct = r.headers.get('content-type'); if (hls(ct)) rep('stream', r.url, null); else if (dash(ct)) rep('dash', r.url, null); } catch (e) {} }, function(){});
                 return p;
               };
               var X = window.XMLHttpRequest && XMLHttpRequest.prototype;
@@ -622,7 +644,7 @@ class BrowserViewModel @Inject constructor(
                 var send = X.send;
                 X.send = function(){
                   var x = this;
-                  try { x.addEventListener('load', function(){ try { if (hls(x.getResponseHeader('content-type'))) rep('stream', x.responseURL, null); } catch (e) {} }); } catch (e) {}
+                  try { x.addEventListener('load', function(){ try { var ct = x.getResponseHeader('content-type'); if (hls(ct)) rep('stream', x.responseURL, null); else if (dash(ct)) rep('dash', x.responseURL, null); } catch (e) {} }); } catch (e) {}
                   return send.apply(this, arguments);
                 };
               }
@@ -652,6 +674,7 @@ fun BrowserScreen(initialUrl: String? = null) {
     var mediaDialog by remember { mutableStateOf(false) }
     var findQuery by remember { mutableStateOf<String?>(null) }
     val fullscreen by vm.fullscreen.collectAsState()
+    var pageLinks by remember { mutableStateOf<List<PageLink>?>(null) }
     LaunchedEffect(Unit) {
         vm.onDownloadRequest = app.requestAdd
         vm.onMessage = { msg -> vm.viewModelScope.launch { app.snackbar.showSnackbar(msg) } }
@@ -697,6 +720,7 @@ fun BrowserScreen(initialUrl: String? = null) {
                             DropdownMenuItem(text = { Text("Bookmarks") }, onClick = { menu = false; app.nav.navigate(BookmarksRoute) })
                             DropdownMenuItem(text = { Text("History") }, onClick = { menu = false; app.nav.navigate(HistoryRoute) })
                             DropdownMenuItem(text = { Text("Find in page") }, onClick = { menu = false; findQuery = "" })
+                            DropdownMenuItem(text = { Text("Download files on this page") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; vm.scanLinks { pageLinks = it } })
                             DropdownMenuItem(text = { Text(if (settings?.desktopMode == true) "Mobile site" else "Desktop site") }, onClick = { menu = false; vm.toggleDesktopMode() })
                             DropdownMenuItem(text = { Text("Share link") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; tab?.url?.let(ctx::shareText) })
                             DropdownMenuItem(text = { Text("Open in external browser") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; tab?.url?.let(ctx::openInBrowser) })
@@ -774,6 +798,7 @@ fun BrowserScreen(initialUrl: String? = null) {
         dismissButton = { TextButton(onClick = { vm.newTab(private = true); tabsDialog = false }, enabled = vm.privateSupported) { Text("New private tab") } },
     )
 
+    pageLinks?.let { links -> LinkGrabberSheet(links, onDismiss = { pageLinks = null }, onDownload = { chosen -> pageLinks = null; vm.downloadLinks(chosen) }) }
     if (mediaDialog) MediaSheet(tab?.media.orEmpty(), onDismiss = { mediaDialog = false }, onDownload = { m -> mediaDialog = false; download(m) })
 }
 
@@ -784,7 +809,7 @@ private fun MediaSheet(media: List<DetectedMedia>, onDismiss: () -> Unit, onDown
         Column(Modifier.padding(horizontal = 16.dp).navigationBarsPadding()) {
             Text("Media on this page", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Videos and audio this page loaded or played. HLS streams are saved as MP4. DRM-protected, live and DASH streams can't be downloaded.",
+                "Videos and audio this page loaded or played. HLS and DASH streams are saved as MP4. DRM-protected and live streams can't be downloaded.",
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp),
             )
             if (media.isEmpty()) Text("Nothing detected yet. Start playing the video, then check here again.", modifier = Modifier.padding(vertical = 16.dp))

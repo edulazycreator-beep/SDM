@@ -34,7 +34,7 @@ object Remuxer {
     }
 
     /** Returns true on success. On failure the caller keeps the original segments file. */
-    fun toMp4(inputs: List<File>, output: FileDescriptor): Boolean {
+    fun toMp4(inputs: List<File>, output: FileDescriptor, audioOnly: Boolean = false): Boolean {
         val extractors = mutableListOf<MediaExtractor>()
         var muxer: MediaMuxer? = null
         try {
@@ -47,7 +47,7 @@ object Remuxer {
                 for (i in 0 until ex.trackCount) {
                     val fmt = ex.getTrackFormat(i)
                     val mime = fmt.getString(MediaFormat.KEY_MIME).orEmpty()
-                    val take = (mime.startsWith("video/") && !haveVideo) || (mime.startsWith("audio/") && !haveAudio)
+                    val take = (mime.startsWith("video/") && !haveVideo && !audioOnly) || (mime.startsWith("audio/") && !haveAudio)
                     if (!take) continue
                     if (mime.startsWith("video/")) haveVideo = true else haveAudio = true
                     val max = if (fmt.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)) fmt.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE) else 0

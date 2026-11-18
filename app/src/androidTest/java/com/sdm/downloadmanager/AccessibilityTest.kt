@@ -1,5 +1,6 @@
 package com.sdm.downloadmanager
 
+import androidx.compose.ui.test.junit4.accessibility.disableAccessibilityChecks
 import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -27,14 +28,19 @@ class AccessibilityTest {
         rule.waitUntil(15_000) { exists("Skip") || exists("Smart Download Manager") }
         if (exists("Skip")) rule.onAllNodesWithText("Skip").onFirst().performClick()
         rule.waitUntil(15_000) { existsExact("Downloads") }
-        rule.enableAccessibilityChecks()
-        rule.waitForIdle()
-        rule.onRoot().tryPerformAccessibilityChecks()
+        val failures = mutableListOf<String>()
+        fun check(screen: String) {
+            rule.waitForIdle()
+            rule.enableAccessibilityChecks()
+            try { rule.onRoot().tryPerformAccessibilityChecks() } catch (e: Throwable) { failures += "$screen: ${e.message}" }
+            rule.disableAccessibilityChecks()
+        }
+        check("Home")
         for ((tab, marker) in listOf("Downloads" to "Downloads", "Files" to "All files", "Settings" to "Appearance", "Browser" to "Browser")) {
             rule.onAllNodesWithText(tab, substring = false).onFirst().performClick()
             rule.waitUntil(5_000) { exists(marker) }
-            rule.waitForIdle()
-            rule.onRoot().tryPerformAccessibilityChecks()
+            check(tab)
         }
+        if (failures.isNotEmpty()) throw AssertionError(failures.joinToString("\n\n"))
     }
 }

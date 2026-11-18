@@ -116,6 +116,54 @@ class OutputStore @Inject constructor(@ApplicationContext private val context: C
         return staged.copy(displayName = name, label = (tree.name ?: "Selected folder") + " (copied when complete)")
     }
 
+    /**
+     * Creates a finished file written in one pass (extracted archive entries, subtitles), optionally
+     * in [subfolder] (segments separated by '/', each sanitized), and returns its URI and display name.
+     */
+    suspend fun writeNew(
+        name: String, mime: String?, category: FileCategory, type: DestinationType, treeUri: String?, subfolder: String?,
+        write: (java.io.OutputStream) -> Unit,
+    ): Pair<String, String> = withContext(Dispatchers.IO) {
+        val safeName = FileNames.sanitize(name)
+        val mimeType = mime ?: com.sdm.core.common.MimeTypes.forName(safeName)
+        val segments = subfolder?.split('/')?.map { FileNames.sanitize(it) }?.filter { it.isNotBlank() && it != "." && it != ".." }.orEmpty()
+        when {
+            type == DestinationType.SAF_TREE && treeUri != null -> {
+                var dir = DocumentFile.fromTreeUri(context, Uri.parse(treeUri)) ?: throw IOException("Folder is no longer accessible")
+                for (seg in segments) dir = dir.findFile(seg)?.takeIf { it.isDirectory } ?: dir.createDirectory(seg) ?: throw IOException("Cannot create folder $seg")
+                val doc = dir.createFile(mimeType, safeName) ?: throw IOException("Could not create $safeName")
+                (resolver.openOutputStream(doc.uri, "w") ?: throw IOException("Cannot write $safeName")).use(write)
+                doc.uri.toString() to (doc.name ?: safeName)
+            }
+            type == DestinationType.MEDIASTORE && Build.VERSION.SDK_INT >= 29 -> {
+                val values = ContentValues().apply {
+                    put(MediaStore.Downloads.DISPLAY_NAME, safeName)
+                    put(MediaStore.Downloads.MIME_TYPE, mimeType)
+                    put(MediaStore.Downloads.RELATIVE_PATH, (listOf(Environment.DIRECTORY_DOWNLOADS, "SDM", category.folder) + segments).joinToString("/"))
+                    put(MediaStore.Downloads.IS_PENDING, 1)
+                }
+                val uri = resolver.insert(MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY), values) ?: throw IOException("MediaStore refused to create $safeName")
+                try {
+                    (resolver.openOutputStream(uri, "w") ?: throw IOException("Cannot write $safeName")).use(write)
+                    resolver.update(uri, ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }, null, null)
+                } catch (e: Exception) { runCatching { resolver.delete(uri, null, null) }; throw e }
+                val display = resolver.query(uri, arrayOf(MediaStore.Downloads.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null } ?: safeName
+                uri.toString() to display
+            }
+            else -> {
+                val root = privateDir(category)
+                val dir = File(root, segments.joinToString("/")).apply { mkdirs() }
+                if (!dir.canonicalPath.startsWith(root.canonicalPath)) throw IOException("Invalid folder")
+                var file = File(dir, safeName)
+                var n = 1
+                while (file.exists()) file = File(dir, FileNames.numbered(safeName, n++))
+                if (!file.canonicalPath.startsWith(root.canonicalPath)) throw IOException("Invalid file name")
+                try { file.outputStream().use(write) } catch (e: Exception) { file.delete(); throw e }
+                Uri.fromFile(file).toString() to file.name
+            }
+        }
+    }
+
     fun open(uri: String): RandomAccessSink {
         val u = Uri.parse(uri)
         if (u.scheme == "file") {
@@ -132,6 +180,12 @@ class OutputStore @Inject constructor(@ApplicationContext private val context: C
         val u = Uri.parse(uri)
         if (u.scheme == "file") return ParcelFileDescriptor.open(File(u.path!!), ParcelFileDescriptor.MODE_READ_WRITE or ParcelFileDescriptor.MODE_CREATE)
         return resolver.openFileDescriptor(u, "rw") ?: throw FileNotFoundException(uri)
+    }
+
+    suspend fun writeText(uri: String, text: String) = withContext(Dispatchers.IO) {
+        val u = Uri.parse(uri)
+        val out = if (u.scheme == "file") java.io.FileOutputStream(File(u.path!!)) else resolver.openOutputStream(u, "w") ?: throw IOException("Cannot write $uri")
+        out.use { it.write(text.toByteArray()) }
     }
 
     /** Copies a finished private file into an output that was created for it. */

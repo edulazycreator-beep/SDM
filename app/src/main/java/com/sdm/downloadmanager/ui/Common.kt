@@ -66,7 +66,15 @@ fun Context.copyToClipboard(label: String, text: String) {
     Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
 }
 
-fun Context.openFile(uri: Uri, mime: String?) {
+/** Opens a file: video and audio play in SDM's own player unless [chooser] is set. */
+fun Context.openFile(uri: Uri, mime: String?, title: String? = null, chooser: Boolean = false) {
+    if (!chooser && com.sdm.downloadmanager.feature.player.PlayerActivity.canPlay(mime)) {
+        runCatching { com.sdm.downloadmanager.feature.player.PlayerActivity.start(this, uri, title, mime); return }
+    }
+    openWith(uri, mime)
+}
+
+fun Context.openWith(uri: Uri, mime: String?) {
     val type = mime ?: "*/*"
     val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, type).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
     try { startActivity(Intent.createChooser(intent, "Open with").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }

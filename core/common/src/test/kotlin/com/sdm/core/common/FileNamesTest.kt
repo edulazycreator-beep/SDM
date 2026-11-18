@@ -28,6 +28,9 @@ class FileNamesTest {
     @Test fun urlValidation() {
         assertTrue(Urls.isValidHttpUrl("https://example.com/a.zip"))
         assertFalse(Urls.isValidHttpUrl("ftp://example.com/a"))
+        assertTrue(Urls.isValidDownloadUrl("ftp://example.com/a") && Urls.isValidDownloadUrl("sftp://u@h.example/x.zip"))
+        assertFalse(Urls.isValidDownloadUrl("file:///etc/passwd") || Urls.isValidDownloadUrl("sftps://h/x"))
+        assertEquals(listOf("https://a.example/x", "ftp://b.example/y.iso"), Urls.extract("see https://a.example/x and ftp://b.example/y.iso"))
         assertFalse(Urls.isValidHttpUrl("javascript:alert(1)"))
         assertEquals(listOf("https://a.com/x.zip", "http://b.org/y"), Urls.extract("get https://a.com/x.zip, then http://b.org/y. https://a.com/x.zip"))
     }

@@ -1,5 +1,8 @@
 package com.sdm.downloadmanager.feature.home
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.foundation.layout.heightIn
@@ -185,6 +188,7 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
                                 DropdownMenu(more, { more = false }) {
                                     DropdownMenuItem(text = { Text("Add multiple URLs") }, leadingIcon = { Icon(Icons.Filled.PlaylistAdd, null) }, onClick = { more = false; multiDialog = true })
                                     DropdownMenuItem(text = { Text("Download queue") }, leadingIcon = { Icon(Icons.Filled.Queue, null) }, onClick = { more = false; app.nav.navigate(QueueRoute) })
+                                    DropdownMenuItem(text = { Text("Send links from a computer") }, leadingIcon = { Icon(Icons.Filled.Computer, null) }, onClick = { more = false; app.nav.navigate(com.sdm.downloadmanager.ui.LanReceiveRoute) })
                                     DropdownMenuItem(text = { Text("Analytics") }, leadingIcon = { Icon(Icons.Filled.BarChart, null) }, onClick = { more = false; app.nav.navigate(AnalyticsRoute) })
                                 }
                             }
@@ -246,7 +250,7 @@ fun MultiUrlDialog(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
 @Composable
 private fun QuickAction(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier, primary: Boolean = false, onClick: () -> Unit) {
     val colors = if (primary) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-    Card(onClick = onClick, modifier = modifier.heightIn(min = 72.dp), colors = colors) {
+    Card(onClick = onClick, modifier = modifier.heightIn(min = 72.dp).semantics(mergeDescendants = true) { contentDescription = label }, colors = colors) {
         Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Icon(icon, null)
             Spacer(Modifier.height(4.dp))

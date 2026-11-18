@@ -9,7 +9,7 @@ import androidx.room.RoomDatabase
         ThroughputSampleEntity::class, TransferObservationEntity::class, DailyStatEntity::class, RuleEntity::class,
         BrowserTabEntity::class, BookmarkEntity::class, HistoryEntity::class, FileIndexEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 abstract class SdmDatabase : RoomDatabase() {
@@ -33,6 +33,15 @@ abstract class SdmDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE `downloads` ADD COLUMN `streamType` TEXT")
                 db.execSQL("ALTER TABLE `downloads` ADD COLUMN `streamAudioUrl` TEXT")
                 db.execSQL("ALTER TABLE `downloads` ADD COLUMN `streamLabel` TEXT")
+            }
+        }
+
+        /** v2 -> v3: subtitle tracks, audio-only stream downloads, mirror links. */
+        val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE `downloads` ADD COLUMN `streamSubtitles` TEXT")
+                db.execSQL("ALTER TABLE `downloads` ADD COLUMN `streamAudioOnly` INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE `downloads` ADD COLUMN `mirrors` TEXT")
             }
         }
     }
