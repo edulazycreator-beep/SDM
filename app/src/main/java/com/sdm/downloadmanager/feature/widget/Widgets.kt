@@ -117,6 +117,8 @@ fun pasteIntent(context: Context): Intent =
 
 /** Quick Settings tile: opens SDM and adds the link in the clipboard. */
 class PasteLinkTile : TileService() {
+    // The Intent variant is only used below Android 14, where the PendingIntent one doesn't exist.
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
     override fun onClick() {
         super.onClick()
         val intent = pasteIntent(this)
