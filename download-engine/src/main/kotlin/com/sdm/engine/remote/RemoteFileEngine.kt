@@ -206,7 +206,7 @@ class RemoteFileEngine(
 
     private fun sftp(u: URI, login: RemoteLogin?, path: String, name: String): Session {
         val jsch = JSch()
-        knownHosts?.let { f -> f.parentFile?.mkdirs(); if (!f.exists()) f.createNewFile(); jsch.setKnownHosts(f.path) }
+        knownHosts?.let { f -> jsch.hostKeyRepository = TofuHostKeys(f) }
         val s = jsch.getSession(login?.user ?: throw RemoteRefused(ErrorKind.HTTP, "SFTP needs a user name and password", 401), u.host, if (u.port > 0) u.port else 22)
         s.setPassword(login.password)
         s.setConfig("StrictHostKeyChecking", if (knownHosts != null) "accept-new" else "no")
@@ -232,4 +232,42 @@ class RemoteFileEngine(
         val schemes = setOf("ftp", "ftps", "sftp")
         fun handles(url: String): Boolean = runCatching { URI(url.trim()).scheme?.lowercase() in schemes }.getOrDefault(false)
     }
+}
+
+/**
+ * Trust-on-first-use host keys: the first key a server presents is saved; a different key of the
+ * same type later is reported as CHANGED, which makes JSch refuse before any password is sent.
+ */
+class TofuHostKeys(private val file: File) : com.jcraft.jsch.HostKeyRepository {
+    private data class Entry(val host: String, val type: String, val key: String)
+
+    private fun read(): List<Entry> = runCatching {
+        file.readLines().mapNotNull { l -> l.split('\t').takeIf { it.size == 3 }?.let { Entry(it[0], it[1], it[2]) } }
+    }.getOrDefault(emptyList())
+
+    private fun write(entries: List<Entry>) {
+        file.parentFile?.mkdirs()
+        file.writeText(entries.joinToString("") { "${it.host}\t${it.type}\t${it.key}\n" })
+    }
+
+    @Synchronized override fun check(host: String, key: ByteArray): Int {
+        val k = com.jcraft.jsch.HostKey(host, key)
+        val same = read().filter { it.host == host && it.type == k.type }
+        return when {
+            same.isEmpty() -> com.jcraft.jsch.HostKeyRepository.NOT_INCLUDED
+            same.any { it.key == k.key } -> com.jcraft.jsch.HostKeyRepository.OK
+            else -> com.jcraft.jsch.HostKeyRepository.CHANGED
+        }
+    }
+
+    @Synchronized override fun add(hostkey: com.jcraft.jsch.HostKey, ui: com.jcraft.jsch.UserInfo?) {
+        val entries = read().filterNot { it.host == hostkey.host && it.type == hostkey.type }
+        write(entries + Entry(hostkey.host, hostkey.type, hostkey.key))
+    }
+
+    @Synchronized override fun remove(host: String, type: String?) { write(read().filterNot { it.host == host && (type == null || it.type == type) }) }
+    @Synchronized override fun remove(host: String, type: String?, key: ByteArray?) = remove(host, type)
+    override fun getKnownHostsRepositoryID(): String = "sdm-tofu"
+    override fun getHostKey(): Array<com.jcraft.jsch.HostKey> = read().mapNotNull { e -> runCatching { com.jcraft.jsch.HostKey(e.host, java.util.Base64.getDecoder().decode(e.key)) }.getOrNull() }.toTypedArray()
+    override fun getHostKey(host: String?, type: String?): Array<com.jcraft.jsch.HostKey> = getHostKey().filter { (host == null || it.host == host) && (type == null || it.type == type) }.toTypedArray()
 }

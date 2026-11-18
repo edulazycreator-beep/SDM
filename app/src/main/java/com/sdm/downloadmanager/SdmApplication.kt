@@ -11,6 +11,7 @@ import javax.inject.Inject
 class SdmApplication : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var coordinator: DownloadCoordinator
+    @Inject lateinit var widgets: com.sdm.downloadmanager.feature.widget.WidgetUpdater
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
@@ -19,5 +20,6 @@ class SdmApplication : Application(), Configuration.Provider {
         super.onCreate()
         // Recovers interrupted downloads and starts the dispatcher (spec section 6.4).
         coordinator.start()
+        widgets.start()
     }
 }

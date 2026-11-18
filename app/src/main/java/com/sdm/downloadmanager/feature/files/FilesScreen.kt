@@ -1,5 +1,6 @@
 package com.sdm.downloadmanager.feature.files
 
+import androidx.compose.material.icons.filled.Lock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -109,7 +110,11 @@ data class FilesUi(
 )
 
 @HiltViewModel
-class FilesViewModel @Inject constructor(private val repo: FileRepository) : ViewModel() {
+class FilesViewModel @Inject constructor(private val repo: FileRepository, private val vault: com.sdm.core.data.files.PrivateVault) : ViewModel() {
+    fun moveToPrivate(f: FileItem) = viewModelScope.launch {
+        _message.value = runCatching { vault.moveIn(f.uri, f.name); repo.refresh(); "Moved ${f.name} to the private folder" }.getOrElse { it.message ?: "Could not move the file" }
+    }
+
     private val category = MutableStateFlow<FileCategory?>(null)
     private val query = MutableStateFlow("")
     private val sort = MutableStateFlow(FileSort.DATE)
@@ -193,6 +198,13 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
     LaunchedEffect(message) { message?.let { app.snackbar.showSnackbar(it); vm.consume() } }
     val selecting = ui.selected.isNotEmpty()
 
+    var movePrivate by remember { mutableStateOf<FileItem?>(null) }
+    movePrivate?.let { f ->
+        ConfirmDialog(
+            title = "Move to private folder?", message = "\"${f.name}\" moves into SDM's private folder: it disappears from Downloads, the gallery and other apps, and opens only after unlocking.",
+            confirm = "Move", onConfirm = { vm.moveToPrivate(f) }, onDismiss = { movePrivate = null },
+        )
+    }
     SdmScaffold(
         title = if (selecting) "${ui.selected.size} selected" else "Files",
         onBack = if (selecting) vm::clear else null,
@@ -204,6 +216,7 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
                 IconButton(onClick = { moveDialog = true }) { Icon(Icons.Filled.DriveFileMove, "Move") }
                 IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, "Delete") }
             } else {
+                IconButton(onClick = { app.nav.navigate(com.sdm.downloadmanager.ui.PrivateFolderRoute) }) { Icon(Icons.Filled.Lock, "Private folder") }
                 IconButton(onClick = { searching = !searching; if (!searching) vm.setQuery("") }) { Icon(Icons.Filled.Search, "Search files") }
                 IconButton(onClick = vm::toggleGrid) { Icon(if (ui.grid) Icons.Filled.ViewList else Icons.Filled.GridView, "Toggle grid") }
                 Box {
@@ -269,6 +282,7 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
                                         DropdownMenuItem(text = { Text("Share") }, onClick = { menu = false; ctx.shareFiles(listOf(vm.shareUri(f)), listOf(f.mimeType)) })
                                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renameItem = f })
                                         DropdownMenuItem(text = { Text("Details and checksum") }, onClick = { menu = false; details = f })
+                                        DropdownMenuItem(text = { Text("Move to private folder") }, onClick = { menu = false; movePrivate = f })
                                         DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; vm.clear(); vm.toggle(f.uri); confirmDelete = true })
                                     }
                                 }

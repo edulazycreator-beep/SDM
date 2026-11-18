@@ -4,4 +4,6 @@
     <exclude domain="database" path="sdm.db" />
     <exclude domain="database" path="sdm.db-wal" />
     <exclude domain="database" path="sdm.db-shm" />
+    <!-- The private folder never leaves the device. -->
+    <exclude domain="file" path="private/" />
 </full-backup-content>

@@ -81,6 +81,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -126,6 +127,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.util.UUID
 import javax.inject.Inject
@@ -161,6 +163,9 @@ data class TabUi(
     val isPrivate: Boolean = false,
     val secure: Boolean = false,
     val media: List<DetectedMedia> = emptyList(),
+    /** Ad/tracker requests blocked on the current page. */
+    val blocked: Int = 0,
+    val reader: Boolean = false,
 )
 
 data class BrowserUi(val tabs: List<TabUi> = emptyList(), val currentId: String? = null, val findCount: Pair<Int, Int>? = null) {
@@ -178,6 +183,7 @@ private const val HOME_URL = "about:blank"
 @SuppressLint("RequiresFeature")
 @HiltViewModel
 class BrowserViewModel @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val appContext: Context,
     private val browser: BrowserRepository,
     private val downloads: DownloadRepository,
     private val settings: SettingsRepository,
@@ -255,15 +261,39 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    val sites by lazy { SiteSettingsStore(appContext) }
+    private val pageHosts = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    fun site(): SiteSettings = sites.get(_ui.value.current?.url)
+
+    fun updateSite(transform: (SiteSettings) -> SiteSettings) {
+        val tab = _ui.value.current ?: return
+        sites.set(tab.url, transform(sites.get(tab.url)))
+        views[tab.id]?.let { wv -> applySite(wv, tab, tab.url); wv.reload() }
+    }
+
+    private fun adBlockOn(url: String?) = sites.get(url).adBlock ?: (settingsState.value?.adBlock ?: true)
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private fun applySite(wv: WebView, tab: TabUi, url: String) {
+        val site = sites.get(url)
+        wv.settings.javaScriptEnabled = site.javascript
+        wv.settings.javaScriptCanOpenWindowsAutomatically = site.popups
+        applyDesktopMode(wv, site.desktop ?: (settingsState.value?.desktopMode == true))
+        runCatching { cookieManagerFor(tab).setAcceptThirdPartyCookies(wv, site.thirdPartyCookies) }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     fun webView(context: Context, tab: TabUi): WebView = views.getOrPut(tab.id) {
+        viewModelScope.launch(Dispatchers.IO) { AdBlocker.load(context.applicationContext) }
         WebView(MutableContextWrapper(context)).apply {
             if (tab.isPrivate && privateSupported) runCatching {
                 ProfileStore.getInstance().getOrCreateProfile(PRIVATE_PROFILE)
                 WebViewCompat.setProfile(this, PRIVATE_PROFILE)
             }
             configure(this, tab)
-            loadUrl(pendingLoad.remove(tab.id) ?: tab.url.ifBlank { HOME_URL })
+            val pending = pendingLoad.remove(tab.id)
+            if (pending != POPUP) loadUrl(pending ?: tab.url.ifBlank { HOME_URL })
         }
     }.also { wv -> (wv.context as? MutableContextWrapper)?.baseContext = context }
 
@@ -281,7 +311,8 @@ class BrowserViewModel @Inject constructor(
             useWideViewPort = true
             builtInZoomControls = true
             displayZoomControls = false
-            setSupportMultipleWindows(false)
+            setSupportMultipleWindows(true)
+            javaScriptCanOpenWindowsAutomatically = false
             mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
             if (tab.isPrivate) cacheMode = WebSettings.LOAD_NO_CACHE
             s?.userAgent?.takeIf { it.isNotBlank() }?.let { userAgentString = it }
@@ -294,8 +325,10 @@ class BrowserViewModel @Inject constructor(
         wv.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                 scans[tab.id] = TabScan()
+                sites.hostOf(url)?.let { pageHosts[tab.id] = it }
+                applySite(view, tab, url)
                 userAgents[tab.id] = view.settings.userAgentString
-                updateTab(tab.id) { it.copy(url = url, progress = 5, secure = url.startsWith("https://"), media = emptyList()) }
+                updateTab(tab.id) { it.copy(url = url, progress = 5, secure = url.startsWith("https://"), media = emptyList(), blocked = 0, reader = false) }
                 if (!documentStart) view.evaluateJavascript(MEDIA_HOOK_JS, null)
                 if (tab.id == _ui.value.currentId) refreshBookmark()
             }
@@ -309,8 +342,16 @@ class BrowserViewModel @Inject constructor(
             }
 
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                // Observes resource URLs only (never blocks or alters them) to find media files and
-                // stream playlists the page loads (spec section 11).
+                // Ad/tracker hosts get an empty answer (never the page itself, and only when blocking is on).
+                if (!request.isForMainFrame && AdBlocker.ready) {
+                    val page = pageHosts[tab.id]
+                    val host = request.url.host
+                    if (page != null && host != null && !host.endsWith(page) && adBlockOn("https://$page/") && AdBlocker.isBlocked(host)) {
+                        updateTab(tab.id) { it.copy(blocked = it.blocked + 1) }
+                        return WebResourceResponse("text/plain", "utf-8", 204, "Blocked", emptyMap(), java.io.ByteArrayInputStream(ByteArray(0)))
+                    }
+                }
+                // Otherwise only observes resource URLs to find media files and stream playlists (spec section 11).
                 observe(tab.id, request.url.toString())
                 return null
             }
@@ -323,6 +364,22 @@ class BrowserViewModel @Inject constructor(
                 fullscreen.value = view to callback
             }
             override fun onHideCustomView() { fullscreen.value = null }
+            override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: android.os.Message): Boolean {
+                // Pop-ups open as a new tab when the user tapped something, or the site is allowed pop-ups.
+                if (!isUserGesture && !sites.get(view.url).popups) {
+                    onMessage?.invoke("Blocked a pop-up. Allow pop-ups for this site in Site settings.")
+                    return false
+                }
+                val child = TabUi(UUID.randomUUID().toString(), "", isPrivate = tab.isPrivate)
+                _ui.update { it.copy(tabs = it.tabs + child, currentId = child.id) }
+                pendingLoad[child.id] = POPUP
+                val ctx = (view.context as? MutableContextWrapper)?.baseContext ?: view.context
+                val wv = webView(ctx, child)
+                (resultMsg.obj as? WebView.WebViewTransport)?.webView = wv
+                resultMsg.sendToTarget()
+                persistTabs()
+                return true
+            }
         }
         wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
             when {
@@ -513,6 +570,19 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /** Reader view: Mozilla Readability turns the article into plain, large text; toggling again reloads. */
+    fun toggleReader() {
+        val tab = _ui.value.current ?: return
+        val wv = views[tab.id] ?: return
+        if (tab.reader) { updateTab(tab.id) { it.copy(reader = false) }; wv.reload(); return }
+        viewModelScope.launch {
+            val lib = withContext(Dispatchers.IO) { runCatching { appContext.assets.open("reader/Readability.js").bufferedReader().readText() }.getOrNull() } ?: return@launch
+            wv.evaluateJavascript(lib + READER_JS) { r ->
+                if (r == "true") updateTab(tab.id) { it.copy(reader = true) } else onMessage?.invoke("This page has no article SDM can show in reader view")
+            }
+        }
+    }
+
     fun exitFullscreen() {
         val (_, callback) = fullscreen.value ?: return
         fullscreen.value = null
@@ -609,6 +679,24 @@ class BrowserViewModel @Inject constructor(
 
     companion object {
         private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp")
+        private const val POPUP = "sdm:popup"
+
+        private val READER_JS = """
+            ;(function(){
+              try {
+                var a = new Readability(document.cloneNode(true)).parse();
+                if (!a || !a.content || (a.textContent || '').length < 200) return false;
+                function esc(t){ return String(t || '').replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+                var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var css = 'body{font:19px/1.65 Georgia,serif;max-width:38em;margin:0 auto;padding:20px 18px 60px;' + (dark ? 'background:#121212;color:#e6e1e5' : 'background:#fffdf8;color:#1b1b1f') + '}' +
+                  'h1{font:600 1.5em/1.25 system-ui,sans-serif}img,video,figure{max-width:100%;height:auto}a{color:' + (dark ? '#a8c7fa' : '#3657c2') + '}pre{white-space:pre-wrap}.by{opacity:.7;font:14px system-ui,sans-serif}';
+                document.open();
+                document.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + esc(a.title) + '</title><style>' + css + '</style></head><body><h1>' + esc(a.title) + '</h1>' + (a.byline ? '<p class="by">' + esc(a.byline) + '</p>' : '') + a.content + '</body></html>');
+                document.close();
+                return true;
+              } catch (e) { return false; }
+            })();
+        """.trimIndent()
 
         /**
          * Reports media elements that load or play (capture-phase listeners, so they see events from
@@ -675,6 +763,7 @@ fun BrowserScreen(initialUrl: String? = null) {
     var findQuery by remember { mutableStateOf<String?>(null) }
     val fullscreen by vm.fullscreen.collectAsState()
     var pageLinks by remember { mutableStateOf<List<PageLink>?>(null) }
+    var siteSheet by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         vm.onDownloadRequest = app.requestAdd
         vm.onMessage = { msg -> vm.viewModelScope.launch { app.snackbar.showSnackbar(msg) } }
@@ -720,6 +809,8 @@ fun BrowserScreen(initialUrl: String? = null) {
                             DropdownMenuItem(text = { Text("Bookmarks") }, onClick = { menu = false; app.nav.navigate(BookmarksRoute) })
                             DropdownMenuItem(text = { Text("History") }, onClick = { menu = false; app.nav.navigate(HistoryRoute) })
                             DropdownMenuItem(text = { Text("Find in page") }, onClick = { menu = false; findQuery = "" })
+                            DropdownMenuItem(text = { Text(if (tab?.reader == true) "Exit reader view" else "Reader view") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; vm.toggleReader() })
+                            DropdownMenuItem(text = { Text("Site settings" + (tab?.blocked?.takeIf { it > 0 }?.let { " · $it blocked" } ?: "")) }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; siteSheet = true })
                             DropdownMenuItem(text = { Text("Download files on this page") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; vm.scanLinks { pageLinks = it } })
                             DropdownMenuItem(text = { Text(if (settings?.desktopMode == true) "Mobile site" else "Desktop site") }, onClick = { menu = false; vm.toggleDesktopMode() })
                             DropdownMenuItem(text = { Text("Share link") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; tab?.url?.let(ctx::shareText) })
@@ -798,6 +889,7 @@ fun BrowserScreen(initialUrl: String? = null) {
         dismissButton = { TextButton(onClick = { vm.newTab(private = true); tabsDialog = false }, enabled = vm.privateSupported) { Text("New private tab") } },
     )
 
+    if (siteSheet) SiteSettingsSheet(vm, tab, globalAdBlock = settings?.adBlock ?: true, globalDesktop = settings?.desktopMode == true, onDismiss = { siteSheet = false })
     pageLinks?.let { links -> LinkGrabberSheet(links, onDismiss = { pageLinks = null }, onDownload = { chosen -> pageLinks = null; vm.downloadLinks(chosen) }) }
     if (mediaDialog) MediaSheet(tab?.media.orEmpty(), onDismiss = { mediaDialog = false }, onDownload = { m -> mediaDialog = false; download(m) })
 }
@@ -876,6 +968,34 @@ private fun StartPage(onOpen: (String) -> Unit) {
             listOf("https://duckduckgo.com", "https://www.wikipedia.org", "https://archive.org").forEach { u ->
                 TextButton(onClick = { onOpen(u) }) { Text(u.removePrefix("https://")) }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SiteSettingsSheet(vm: BrowserViewModel, tab: TabUi?, globalAdBlock: Boolean, globalDesktop: Boolean, onDismiss: () -> Unit) {
+    var site by remember { mutableStateOf(vm.site()) }
+    fun change(f: (SiteSettings) -> SiteSettings) { site = f(site); vm.updateSite { site } }
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(horizontal = 16.dp).navigationBarsPadding().padding(bottom = 16.dp)) {
+            Text("Site settings", style = MaterialTheme.typography.titleMedium)
+            Text(vm.sites.hostOf(tab?.url) ?: "", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            @Composable fun row(label: String, sub: String?, value: Boolean, onChange: (Boolean) -> Unit) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(label)
+                        sub?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                    Switch(value, onChange)
+                }
+            }
+            row("Block ads and trackers", tab?.blocked?.takeIf { it > 0 }?.let { "$it requests blocked on this page" }, site.adBlock ?: globalAdBlock) { v -> change { it.copy(adBlock = v) } }
+            row("Desktop site", null, site.desktop ?: globalDesktop) { v -> change { it.copy(desktop = v) } }
+            row("JavaScript", "Turning it off can break pages and video players", site.javascript) { v -> change { it.copy(javascript = v) } }
+            row("Allow pop-ups", "Pop-ups open as new tabs", site.popups) { v -> change { it.copy(popups = v) } }
+            row("Third-party cookies", "Some sign-in and video embeds need them", site.thirdPartyCookies) { v -> change { it.copy(thirdPartyCookies = v) } }
+            TextButton(onClick = { site = SiteSettings(); vm.updateSite { SiteSettings() } }) { Text("Reset to defaults") }
         }
     }
 }

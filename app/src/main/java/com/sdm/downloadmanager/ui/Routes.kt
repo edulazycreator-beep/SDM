@@ -24,3 +24,4 @@ import kotlinx.serialization.Serializable
 @Serializable data object DownloadSettingsRoute
 @Serializable data object AppearanceRoute
 @Serializable data object LanReceiveRoute
+@Serializable data object PrivateFolderRoute

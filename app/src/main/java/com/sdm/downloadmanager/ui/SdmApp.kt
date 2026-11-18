@@ -165,6 +165,7 @@ fun SdmApp(vm: AppViewModel) {
                 ) { padding ->
                     NavHost(nav, startDestination = HomeRoute, modifier = Modifier.padding(bottom = padding.calculateBottomPadding()).consumeWindowInsets(padding)) {
                         composable<HomeRoute> { HomeScreen() }
+                        composable<PrivateFolderRoute> { com.sdm.downloadmanager.feature.files.PrivateFolderScreen() }
                         composable<LanReceiveRoute> { com.sdm.downloadmanager.feature.lan.LanReceiveScreen() }
                         composable<DownloadsRoute> { DownloadsScreen() }
                         composable<BrowserRoute> { BrowserScreen(initialUrl = it.toRoute<BrowserRoute>().url) }

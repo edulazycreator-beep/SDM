@@ -17,6 +17,8 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val appViewModel: AppViewModel by viewModels()
+    /** Set by the Quick Settings tile; the clipboard can only be read once this window has focus. */
+    private var pendingPaste = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
@@ -27,6 +29,13 @@ class MainActivity : ComponentActivity() {
         setContent { SdmApp(appViewModel) }
     }
 
+    @Deprecated("Only used for the Android 8–9 screen-lock confirmation")
+    @Suppress("DEPRECATION")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        com.sdm.downloadmanager.ui.DeviceLock.onActivityResult(requestCode, resultCode)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
@@ -35,7 +44,13 @@ class MainActivity : ComponentActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         // Android only lets the focused foreground app read the clipboard (spec section 9).
-        if (hasFocus) appViewModel.onWindowFocused()
+        if (hasFocus) {
+            appViewModel.onWindowFocused()
+            if (pendingPaste) {
+                pendingPaste = false
+                appViewModel.pasteFromClipboard { android.widget.Toast.makeText(this, "No link in the clipboard", android.widget.Toast.LENGTH_SHORT).show() }
+            }
+        }
     }
 
     private fun handleIntent(intent: Intent?) {
@@ -48,7 +63,10 @@ class MainActivity : ComponentActivity() {
                 val urls = Urls.extract(text)
                 if (urls.isNotEmpty()) appViewModel.requestAdd(AddRequest(urls))
             }
-            Intent.ACTION_VIEW -> intent.dataString?.takeIf { Urls.isValidHttpUrl(it) }?.let { appViewModel.requestAdd(AddRequest(listOf(it), mime = intent.type)) }
+            Intent.ACTION_VIEW -> intent.dataString?.takeIf { Urls.isValidDownloadUrl(it) }?.let { appViewModel.requestAdd(AddRequest(listOf(it), mime = intent.type)) }
+            ACTION_PASTE_LINK -> pendingPaste = true
         }
     }
 }
+
+const val ACTION_PASTE_LINK = "com.sdm.downloadmanager.action.PASTE_LINK"

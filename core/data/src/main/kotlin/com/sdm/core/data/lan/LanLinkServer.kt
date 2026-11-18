@@ -51,16 +51,16 @@ class LanLinkServer(
         if (!isLocal(c.inetAddress)) { respond(c, 403, page("Only devices on the same network can send links.")); return }
         val req = parse(BufferedInputStream(c.getInputStream())) ?: run { respond(c, 400, page("Bad request")); return }
         when {
-            req.method == "GET" && (req.path == "/" || req.path.startsWith("/?")) -> respond(c, 200, form(null))
+            req.method == "GET" && (req.path == "/" || req.path.startsWith("/?")) -> respond(c, 200, formPage(null))
             req.method == "POST" && req.path == "/add" -> {
                 val f = form(req.body)
                 if (failures >= 5) { respond(c, 429, page("Too many wrong codes. Open \"Send from computer\" in SDM again to get a new code.")); stop(); return }
-                if (f["code"]?.trim() != code) { failures++; respond(c, 403, form("Wrong code. Use the 6-digit code shown in SDM.")); return }
+                if (f["code"]?.trim() != code) { failures++; respond(c, 403, formPage("Wrong code. Use the 6-digit code shown in SDM.")); return }
                 val links = com.sdm.core.common.Urls.extract(f["links"].orEmpty()).take(200)
-                if (links.isEmpty()) { respond(c, 200, form("No valid links found. Paste http(s), FTP or SFTP links.")); return }
+                if (links.isEmpty()) { respond(c, 200, formPage("No valid links found. Paste http(s), FTP or SFTP links.")); return }
                 val added = onLinks(links)
                 received += added
-                respond(c, 200, form("Sent ${links.size} link(s) to SDM ($added added)."))
+                respond(c, 200, formPage("Sent ${links.size} link(s) to SDM ($added added)."))
             }
             else -> respond(c, 404, page("Not found"))
         }
@@ -106,7 +106,7 @@ class LanLinkServer(
             <style>body{font-family:system-ui,sans-serif;max-width:640px;margin:40px auto;padding:0 16px;color:#1b1b1f}textarea,input{width:100%;box-sizing:border-box;font:inherit;padding:10px;margin:6px 0 14px;border:1px solid #888;border-radius:8px}button{font:inherit;padding:10px 20px;border-radius:20px;border:0;background:#3657c2;color:#fff}.m{padding:10px;border-radius:8px;background:#eef}</style>
             </head><body><h2>Send links to SDM</h2>${esc(message).let { if (it.isBlank()) "" else "<p class=m>$it</p>" }}</body></html>"""
 
-        fun form(message: String?) = page(message.orEmpty()).replace("</body>", """<form method="post" action="/add">
+        fun formPage(message: String?) = page(message.orEmpty()).replace("</body>", """<form method="post" action="/add">
             <label>Links (one per line)</label><textarea name="links" rows="8" required placeholder="https://…"></textarea>
             <label>Code shown in SDM</label><input name="code" inputmode="numeric" maxlength="6" required autocomplete="off">
             <button type="submit">Send to phone</button></form></body>""")
