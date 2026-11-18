@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  checks: write
+
+jobs:
+  build:
+    name: Build, unit tests, lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build and test
+        id: gradle
+        shell: bash
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon --stacktrace --continue \
+            checkModuleDependencies \
+            test \
+            :app:lintDebug \
+            assembleDebug assembleRelease bundleRelease 2>&1 | tee build.log
+
+      - name: Report build errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "^e: |error:|What went wrong|Could not (find|resolve)|FAILED|Execution failed|Caused by|Unresolved|expected|AssertionError|at com\.sdm|> " build.log \
+            | grep -v "^> Task" | head -150 > errors.txt || true
+          msg=$(sed -e 's/%/%25/g' errors.txt | awk 'BEGIN{ORS="%0A"} {print}')
+          echo "::error title=Gradle errors::${msg}"
+          { echo '## Gradle errors'; echo '```'; cat errors.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Test summary
+        if: always()
+        shell: bash
+        run: |
+          total=0; failed=0
+          for f in $(find . -path '*/build/test-results/*' -name 'TEST-*.xml' 2>/dev/null); do
+            t=$(grep -o 'tests="[0-9]*"' "$f" | head -1 | grep -o '[0-9]*'); total=$((total + ${t:-0}))
+            x=$(grep -o 'failures="[0-9]*"' "$f" | head -1 | grep -o '[0-9]*'); failed=$((failed + ${x:-0}))
+          done
+          echo "Unit tests: $total run, $failed failed" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Unit tests::$total run, $failed failed"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            build.log
+            **/build/reports/**
+            **/build/test-results/**
+          retention-days: 7
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdm-apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+            app/build/outputs/bundle/release/*.aab
+
+  instrumented:
+    name: Instrumented tests (emulator API 34)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run connected tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: ./gradlew --no-daemon connectedDebugAndroidTest 2>&1 | tee connected.log
+      - name: Report instrumented failures
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "FAILED|Exception|Error|expected|at com\.sdm|What went wrong" connected.log | head -120 > errors.txt || true
+          msg=$(sed -e 's/%/%25/g' errors.txt | awk 'BEGIN{ORS="%0A"} {print}')
+          echo "::error title=Instrumented test errors::${msg}"
+      - name: Upload instrumented reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-reports
+          path: |
+            connected.log
+            **/build/reports/androidTests/**
+            **/build/outputs/androidTest-results/**
+          retention-days: 7
+
+  release:
+    name: Publish APK release
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdm-apk
+          path: dist
+      - name: Collect files
+        shell: bash
+        run: |
+          mkdir -p out
+          find dist -name '*-debug.apk' -exec cp {} out/SDM-debug-build${{ github.run_number }}.apk \;
+          find dist -name '*-release.apk' -exec cp {} out/SDM-release-build${{ github.run_number }}.apk \;
+          find dist -name '*.aab' -exec cp {} out/SDM-release-build${{ github.run_number }}.aab \;
+          ls -la out
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: SDM build ${{ github.run_number }} (${{ github.ref_name }})
+          prerelease: true
+          body: |
+            Automated build from `${{ github.ref_name }}` at ${{ github.sha }}.
+            - `SDM-release-*.apk`: optimized (R8) build. Signed with the debug key unless release signing secrets are configured, so it installs for testing but is not a Play upload.
+            - `SDM-debug-*.apk`: debug build.
+            - `SDM-release-*.aab`: Play bundle (needs the real release key before upload).
+          files: out/*
