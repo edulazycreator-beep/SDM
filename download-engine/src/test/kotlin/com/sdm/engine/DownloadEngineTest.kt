@@ -7,7 +7,6 @@ import com.sdm.engine.segment.SegmentPlanner
 import com.sdm.engine.storage.FileSink
 import com.sdm.engine.storage.RandomAccessSink
 import com.sdm.testserver.TestServer
-import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -354,12 +353,17 @@ class DownloadEngineTest {
         assertEquals(1L shl 21, SegmentPlanner.splitPoint(0, (1L shl 22) - 1, 1L shl 20, 1))
     }
 
-    @Test fun limiterAllowsLiveChanges() = runBlocking {
-        val limiter = RateLimiter(0)
-        val start = System.nanoTime()
-        repeat(10) { limiter.acquire(1_000_000) }
-        assertTrue((System.nanoTime() - start) / 1e9 < 0.5)
-        val done = CompletableDeferred<Unit>()
-        done.complete(Unit)
+    @Test fun limiterAllowsLiveChanges() {
+        runBlocking {
+            val limiter = RateLimiter(0)
+            val start = System.nanoTime()
+            repeat(10) { limiter.acquire(1_000_000) }
+            assertTrue((System.nanoTime() - start) / 1e9 < 0.5)
+            limiter.bytesPerSecond = 100_000
+            val t0 = System.nanoTime()
+            limiter.acquire(200_000)
+            limiter.acquire(1)
+            assertTrue((System.nanoTime() - t0) / 1e9 >= 1.0)
+        }
     }
 }
