@@ -287,12 +287,16 @@ class DownloadCoordinator @Inject constructor(
         val result = try {
             engine.run(request, sink, run.limiter, listener)
         } catch (e: CancellationException) {
-            withContext(NonCancellable) { onStopped(id, run.stopReason ?: StopReason.LEASE_REVOKED) }
+            withContext(NonCancellable) {
+                listener.awaitPending()
+                onStopped(id, run.stopReason ?: StopReason.LEASE_REVOKED)
+            }
             throw e
         } finally {
             runCatching { sink.close() }
         }
         withContext(NonCancellable) {
+            listener.awaitPending()
             when (result) {
                 is TransferResult.Completed -> onCompleted(id, result)
                 is TransferResult.Failed -> onFailed(id, result)
@@ -331,9 +335,13 @@ class DownloadCoordinator @Inject constructor(
     private inner class RunListener(private val id: Long, private val run: Running) : TransferListener {
         private var lastSampleAt = System.currentTimeMillis()
         private var lastSampleBytes = -1L
+        private val pending = java.util.concurrent.CopyOnWriteArrayList<Job>()
+
+        /** State-changing callbacks run asynchronously; the outcome waits for them so it is applied last. */
+        suspend fun awaitPending() { pending.forEach { it.join() } }
 
         override fun onProbed(info: ProbeInfo) {
-            scope.launch {
+            pending += scope.launch {
                 val e = dao.get(id) ?: return@launch
                 val free = storage.primary()
                 val needed = (info.totalBytes ?: 0) - e.downloadedBytes
@@ -387,7 +395,7 @@ class DownloadCoordinator @Inject constructor(
         }
 
         override fun onVerifying() {
-            scope.launch { transition(id, DownloadEvent.VERIFY) }
+            pending += scope.launch { transition(id, DownloadEvent.VERIFY) }
         }
     }
 
