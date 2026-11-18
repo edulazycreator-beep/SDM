@@ -5,6 +5,11 @@
 - Copy a link anywhere, then open SDM: it offers to download it.
 - Share a link to SDM from any app ("Download with SDM").
 - In the SDM browser, tap a download link, or long-press a link or image.
+- Play a video in the SDM browser: SDM shows "Video detected — Download". The download button at the
+  bottom right lists every video found on the page, with qualities and estimated sizes. Streams
+  (HLS) are saved as MP4. DRM-protected videos, live streams and DASH streams can't be downloaded;
+  SDM tells you which applies.
+- Paste an `.m3u8` link to pick a quality and save the stream.
 
 The confirmation dialog shows name, size, type, source and destination, and lets you choose
 connections (1–16), network (any / unmetered / Wi-Fi), priority, start time, speed limit and an

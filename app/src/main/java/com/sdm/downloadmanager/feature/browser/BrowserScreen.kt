@@ -19,6 +19,31 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.filled.FullscreenExit
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import com.sdm.core.common.Formatters
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +53,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
@@ -82,6 +106,8 @@ import androidx.webkit.WebViewFeature
 import com.sdm.core.common.FileNames
 import com.sdm.core.common.MimeTypes
 import com.sdm.core.common.Urls
+import com.sdm.engine.hls.HlsParser
+import com.sdm.engine.hls.StreamKind
 import com.sdm.core.data.browser.BrowserRepository
 import com.sdm.core.data.download.DownloadRepository
 import com.sdm.core.data.settings.SettingsRepository
@@ -104,7 +130,26 @@ import org.json.JSONArray
 import java.util.UUID
 import javax.inject.Inject
 
-data class DetectedMedia(val url: String, val name: String, val kind: String)
+/**
+ * A video or audio the browser saw on the page: a direct file, an HLS stream (listed with its
+ * qualities once its playlist has been read), or a stream SDM cannot save (DASH, DRM, live).
+ */
+data class DetectedMedia(
+    val url: String,
+    val name: String,
+    val kind: String,
+    val stream: Boolean = false,
+    val title: String? = null,
+    /** Qualities and duration, e.g. "1080p, 720p, 480p · 12:31". */
+    val details: String? = null,
+    val sizeBytes: Long? = null,
+    val blockedReason: String? = null,
+    /** Playlist is still being read. */
+    val pending: Boolean = false,
+    val playing: Boolean = false,
+) {
+    val downloadable: Boolean get() = blockedReason == null && !pending
+}
 
 data class TabUi(
     val id: String,
@@ -143,6 +188,23 @@ class BrowserViewModel @Inject constructor(
     val privateSupported: Boolean = runCatching { WebViewFeature.isFeatureSupported(WebViewFeature.MULTI_PROFILE) }.getOrDefault(false)
     var onDownloadRequest: ((AddRequest) -> Unit)? = null
     var onMessage: ((String) -> Unit)? = null
+    /** A video started playing in the current tab; the screen offers to download it. */
+    val playing = kotlinx.coroutines.flow.MutableSharedFlow<DetectedMedia>(extraBufferCapacity = 4)
+    /** Page video in fullscreen (WebChromeClient custom view). */
+    val fullscreen = MutableStateFlow<Pair<android.view.View, WebChromeClient.CustomViewCallback>?>(null)
+    private val scans = java.util.concurrent.ConcurrentHashMap<String, TabScan>()
+    private val userAgents = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** Per-page detection state; replaced when a new page starts loading. */
+    private class TabScan {
+        val seen: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+        /** Variant and audio playlists of a master playlist already listed (shown once, as the master). */
+        val children: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+        val announced: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
+        @Volatile var title: String? = null
+    }
+
+    private fun scan(tabId: String): TabScan = scans.computeIfAbsent(tabId) { TabScan() }
     private var restored = false
     val bookmarked = MutableStateFlow(false)
     val settingsState = settings.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -227,9 +289,14 @@ class BrowserViewModel @Inject constructor(
         applyDesktopMode(wv, s?.desktopMode == true)
         cookieManagerFor(tab).setAcceptCookie(true)
         wv.addJavascriptInterface(Bridge(tab.id), "SDMBridge")
+        val documentStart = runCatching { WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT) }.getOrDefault(false)
+        if (documentStart) runCatching { WebViewCompat.addDocumentStartJavaScript(wv, MEDIA_HOOK_JS, setOf("*")) }
         wv.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+                scans[tab.id] = TabScan()
+                userAgents[tab.id] = view.settings.userAgentString
                 updateTab(tab.id) { it.copy(url = url, progress = 5, secure = url.startsWith("https://"), media = emptyList()) }
+                if (!documentStart) view.evaluateJavascript(MEDIA_HOOK_JS, null)
                 if (tab.id == _ui.value.currentId) refreshBookmark()
             }
 
@@ -237,21 +304,25 @@ class BrowserViewModel @Inject constructor(
                 updateTab(tab.id) { it.copy(url = url, title = view.title ?: url, progress = 100, canGoBack = view.canGoBack(), canGoForward = view.canGoForward()) }
                 if (!tab.isPrivate) viewModelScope.launch { browser.recordVisit(url, view.title.orEmpty()) }
                 persistTabs()
+                if (!documentStart) view.evaluateJavascript(MEDIA_HOOK_JS, null)
                 view.evaluateJavascript(MEDIA_SCAN_JS) { result -> parseMediaScan(tab.id, result) }
             }
 
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-                // Observes resource URLs only (never blocks or alters them) to list direct media files (spec section 11).
-                val url = request.url.toString()
-                val name = FileNames.fromUrl(url)
-                val ext = name?.let { FileNames.extension(it) }
-                if (ext != null && ext in MimeTypes.mediaExtensions && ext !in setOf("jpg", "jpeg", "png", "gif", "webp")) addMedia(tab.id, DetectedMedia(url, name, ext.uppercase()))
+                // Observes resource URLs only (never blocks or alters them) to find media files and
+                // stream playlists the page loads (spec section 11).
+                observe(tab.id, request.url.toString())
                 return null
             }
         }
         wv.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView, newProgress: Int) { updateTab(tab.id) { it.copy(progress = newProgress, canGoBack = view.canGoBack(), canGoForward = view.canGoForward()) } }
             override fun onReceivedTitle(view: WebView, title: String?) { updateTab(tab.id) { it.copy(title = title ?: it.title) } }
+            override fun onShowCustomView(view: android.view.View, callback: CustomViewCallback) {
+                fullscreen.value?.second?.onCustomViewHidden()
+                fullscreen.value = view to callback
+            }
+            override fun onHideCustomView() { fullscreen.value = null }
         }
         wv.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
             when {
@@ -299,6 +370,132 @@ class BrowserViewModel @Inject constructor(
 
         @JavascriptInterface
         fun onBlobError(message: String) { viewModelScope.launch { onMessage?.invoke("Could not save this file: $message") } }
+
+        /** Called by [MEDIA_HOOK_JS] when a video/audio element loads or plays, or a playlist is fetched. */
+        @JavascriptInterface
+        fun onMedia(event: String, url: String, tag: String, durationSec: Double, height: Int, title: String) {
+            onMediaEvent(tabId, event, url, tag, durationSec, height, title)
+        }
+    }
+
+    // ------------------------------------------------------------------ media detection
+
+    private fun observe(tabId: String, url: String) {
+        if (!Urls.isValidHttpUrl(url)) return
+        when (HlsParser.streamKindOfUrl(url)) {
+            StreamKind.HLS -> onStreamUrl(tabId, url)
+            StreamKind.DASH -> if (scan(tabId).seen.add(url)) addMedia(tabId, DetectedMedia(
+                url, "DASH stream", "DASH", stream = true,
+                blockedReason = "DASH streams (.mpd) are not supported yet; SDM can save HLS streams and direct video files",
+            ))
+            null -> {
+                val name = FileNames.fromUrl(url) ?: return
+                val ext = FileNames.extension(name)
+                if (ext in MimeTypes.mediaExtensions && ext !in IMAGE_EXTENSIONS && scan(tabId).seen.add(url)) {
+                    addMedia(tabId, DetectedMedia(url, name, ext.uppercase()))
+                }
+            }
+        }
+    }
+
+    private fun onStreamUrl(tabId: String, url: String) {
+        val scan = scan(tabId)
+        if (url in scan.children || !scan.seen.add(url)) return
+        addMedia(tabId, DetectedMedia(url, "Video stream", "HLS", stream = true, title = scan.title, pending = true))
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = downloads.inspectStream(url, headersFor(tabId, url))
+            val info = result.getOrNull()
+            if (info == null) {
+                updateMedia(tabId, url) { it.copy(pending = false, blockedReason = "Could not read this stream: ${com.sdm.core.common.Redactor.text(result.exceptionOrNull()?.message ?: "error")}") }
+                return@launch
+            }
+            val isMaster = info.options.any { it.videoPlaylistUrl != info.sourceUrl && it.videoPlaylistUrl != url }
+            if (isMaster) {
+                info.options.forEach { o -> scan.children += o.videoPlaylistUrl; o.audioPlaylistUrl?.let { scan.children += it } }
+                updateTab(tabId) { t -> t.copy(media = t.media.filterNot { it.url in scan.children && it.url != url }) }
+            } else if (url in scan.children) {
+                updateTab(tabId) { t -> t.copy(media = t.media.filterNot { it.url == url }) }
+                return@launch
+            }
+            val qualities = info.options.mapNotNull { o -> o.height?.let { "${it}p" } }.distinct()
+            val details = listOfNotNull(
+                qualities.takeIf { it.isNotEmpty() }?.joinToString(", "),
+                info.durationSec?.let { com.sdm.core.common.Formatters.duration(it.toLong()) },
+                if (info.encrypted && !info.drm) "AES-128" else null,
+            ).joinToString(" · ").ifBlank { null }
+            updateMedia(tabId, url) {
+                it.copy(pending = false, details = details, sizeBytes = info.options.firstOrNull()?.estimatedBytes, blockedReason = info.blockedReason, title = it.title ?: scan.title)
+            }
+        }
+    }
+
+    private fun onMediaEvent(tabId: String, event: String, rawUrl: String, tag: String, durationSec: Double, height: Int, title: String) {
+        val scan = scan(tabId)
+        if (title.isNotBlank()) scan.title = title.take(120)
+        val url = rawUrl.trim()
+        if (event == "stream") { if (Urls.isValidHttpUrl(url)) onStreamUrl(tabId, url); return }
+        val direct = Urls.isValidHttpUrl(url)
+        if (direct) {
+            if (HlsParser.streamKindOfUrl(url) != null) observe(tabId, url)
+            else if (scan.seen.add(url)) {
+                val name = FileNames.fromUrl(url) ?: "video"
+                val kind = FileNames.extension(name).uppercase().ifBlank { if (tag.equals("AUDIO", true)) "AUDIO" else "VIDEO" }
+                addMedia(tabId, DetectedMedia(url, name, kind, title = scan.title))
+            }
+            val details = listOfNotNull(height.takeIf { it > 0 }?.let { "${it}p" }, durationSec.takeIf { it > 0 && it.isFinite() }?.let { com.sdm.core.common.Formatters.duration(it.toLong()) }).joinToString(" · ").ifBlank { null }
+            if (details != null) updateMedia(tabId, url) { if (it.stream) it else it.copy(details = details) }
+        }
+        if (event != "play" && event != "playing") return
+        // Short clips (UI sounds, previews) are not worth interrupting for.
+        if (durationSec > 0 && durationSec < 8) return
+        viewModelScope.launch {
+            // Players using Media Source Extensions play a blob: URL; the downloadable thing is the
+            // playlist they fetched, which may still be being read.
+            var found: DetectedMedia? = null
+            for (attempt in 0 until 10) {
+                val media = _ui.value.tabs.firstOrNull { it.id == tabId }?.media.orEmpty()
+                found = if (direct) media.firstOrNull { it.url == url } ?: media.lastOrNull { it.stream && it.kind == "HLS" }
+                else media.lastOrNull { it.stream && it.downloadable } ?: media.lastOrNull { it.stream && !it.pending } ?: media.lastOrNull { it.stream }
+                if (found != null && !found.pending) break
+                kotlinx.coroutines.delay(300)
+            }
+            val key = found?.url ?: "unsupported:$url"
+            if (!scan.announced.add(key)) return@launch
+            updateTab(tabId) { t -> t.copy(media = t.media.map { it.copy(playing = it.url == found?.url) }) }
+            if (tabId != _ui.value.currentId) return@launch
+            playing.emit(found ?: DetectedMedia(url, "Video", "VIDEO", title = scan.title, blockedReason = "This video's source isn't visible to SDM (it may be protected or use an unsupported format)"))
+        }
+    }
+
+    private fun updateMedia(tabId: String, url: String, f: (DetectedMedia) -> DetectedMedia) =
+        updateTab(tabId) { t -> t.copy(media = t.media.map { if (it.url == url) f(it) else it }) }
+
+    private fun headersFor(tabId: String, url: String): Map<String, String> {
+        val tab = _ui.value.tabs.firstOrNull { it.id == tabId }
+        val cookies = tab?.let { runCatching { cookieManagerFor(it).getCookie(url) }.getOrNull() }
+        return buildMap {
+            userAgents[tabId]?.let { put("User-Agent", it) }
+            tab?.url?.takeIf { it.startsWith("http") }?.let { put("Referer", it) }
+            if (!cookies.isNullOrBlank()) put("Cookie", cookies)
+        }
+    }
+
+    /** What the add dialog needs to download [m] with this tab's session. */
+    fun requestFor(m: DetectedMedia): AddRequest? {
+        val tab = _ui.value.current ?: return null
+        val title = m.title ?: scans[tab.id]?.title ?: tab.title
+        return AddRequest(
+            urls = listOf(m.url), headers = headersFor(tab.id, m.url), sourcePage = tab.url,
+            mime = if (m.stream) "application/vnd.apple.mpegurl" else null,
+            sizeHint = m.sizeBytes.takeIf { !m.stream }, fileNameHint = if (m.stream) null else m.name,
+            streamHint = m.stream && m.kind == "HLS", titleHint = title,
+        )
+    }
+
+    fun exitFullscreen() {
+        val (_, callback) = fullscreen.value ?: return
+        fullscreen.value = null
+        runCatching { callback.onCustomViewHidden() }
     }
 
     private fun saveDataUrl(dataUrl: String, name: String, page: String?, mimeHint: String? = null) = viewModelScope.launch(Dispatchers.IO) {
@@ -316,17 +513,18 @@ class BrowserViewModel @Inject constructor(
         launch(Dispatchers.Main) { onMessage?.invoke(result.fold({ "Saved $it" }, { "Could not save: ${it.message}" })) }
     }
 
-    private fun addMedia(tabId: String, m: DetectedMedia) = viewModelScope.launch {
+    private fun addMedia(tabId: String, m: DetectedMedia) =
         updateTab(tabId) { t -> if (t.media.any { it.url == m.url }) t else t.copy(media = (t.media + m).takeLast(50)) }
-    }
 
     private fun parseMediaScan(tabId: String, json: String?) {
         val items = runCatching { JSONArray(json ?: "[]") }.getOrNull() ?: return
         for (i in 0 until items.length()) {
             val url = items.optString(i)
             if (!Urls.isValidHttpUrl(url)) continue
+            if (HlsParser.streamKindOfUrl(url) != null) { observe(tabId, url); continue }
+            if (!scan(tabId).seen.add(url)) continue
             val name = FileNames.fromUrl(url) ?: "media"
-            addMedia(tabId, DetectedMedia(url, name, FileNames.extension(name).uppercase().ifBlank { "MEDIA" }))
+            addMedia(tabId, DetectedMedia(url, name, FileNames.extension(name).uppercase().ifBlank { "MEDIA" }, title = scan(tabId).title))
         }
     }
 
@@ -383,11 +581,54 @@ class BrowserViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        exitFullscreen()
         views.values.forEach { (it.parent as? ViewGroup)?.removeView(it); it.destroy() }
         views.clear()
     }
 
     companion object {
+        private val IMAGE_EXTENSIONS = setOf("jpg", "jpeg", "png", "gif", "webp")
+
+        /**
+         * Reports media elements that load or play (capture-phase listeners, so they see events from
+         * every element) and fetch/XHR responses served as HLS playlists. It only observes: requests
+         * and playback are passed through unchanged.
+         */
+        private val MEDIA_HOOK_JS = """
+            (function(){
+              if (window.__sdmMediaHook) return; window.__sdmMediaHook = true;
+              var B = window.SDMBridge; if (!B || !B.onMedia) return;
+              function rep(ev, url, el){
+                try {
+                  var d = el && isFinite(el.duration) ? el.duration : -1;
+                  B.onMedia(ev, String(url || ''), el ? String(el.tagName || '') : '', d, el && el.videoHeight ? el.videoHeight : 0, String(document.title || ''));
+                } catch (e) {}
+              }
+              ['loadedmetadata','play','playing'].forEach(function(t){
+                document.addEventListener(t, function(e){
+                  var el = e.target;
+                  if (el && (el.tagName === 'VIDEO' || el.tagName === 'AUDIO')) rep(t, el.currentSrc || el.src, el);
+                }, true);
+              });
+              function hls(ct){ return !!ct && /mpegurl/i.test(ct); }
+              var f = window.fetch;
+              if (f) window.fetch = function(){
+                var p = f.apply(this, arguments);
+                p.then(function(r){ try { if (hls(r.headers.get('content-type'))) rep('stream', r.url, null); } catch (e) {} }, function(){});
+                return p;
+              };
+              var X = window.XMLHttpRequest && XMLHttpRequest.prototype;
+              if (X) {
+                var send = X.send;
+                X.send = function(){
+                  var x = this;
+                  try { x.addEventListener('load', function(){ try { if (hls(x.getResponseHeader('content-type'))) rep('stream', x.responseURL, null); } catch (e) {} }); } catch (e) {}
+                  return send.apply(this, arguments);
+                };
+              }
+            })();
+        """.trimIndent()
+
         private const val MEDIA_SCAN_JS = "(function(){var s=new Set();document.querySelectorAll('video,audio,video source,audio source').forEach(function(e){var u=e.currentSrc||e.src;if(u&&u.indexOf('http')===0)s.add(u)});return JSON.stringify(Array.from(s));})()"
         private fun blobJs(url: String, name: String): String {
             val u = url.replace("'", "\\'"); val n = name.replace("'", "\\'")
@@ -410,16 +651,29 @@ fun BrowserScreen(initialUrl: String? = null) {
     var tabsDialog by remember { mutableStateOf(false) }
     var mediaDialog by remember { mutableStateOf(false) }
     var findQuery by remember { mutableStateOf<String?>(null) }
+    val fullscreen by vm.fullscreen.collectAsState()
     LaunchedEffect(Unit) {
         vm.onDownloadRequest = app.requestAdd
         vm.onMessage = { msg -> vm.viewModelScope.launch { app.snackbar.showSnackbar(msg) } }
         vm.restore(initialUrl)
     }
+    fun download(m: DetectedMedia) {
+        if (!m.downloadable) { mediaDialog = true; return }
+        vm.requestFor(m)?.let(app.requestAdd)
+    }
+    LaunchedEffect(Unit) {
+        vm.playing.collect { m ->
+            val label = m.title?.takeIf { it.isNotBlank() }?.let { " · ${it.take(40)}" }.orEmpty()
+            val text = if (m.downloadable) "Video detected$label" else "Video playing$label — can't be downloaded"
+            val r = app.snackbar.showSnackbar(text, actionLabel = if (m.downloadable) "Download" else "Details", withDismissAction = true, duration = SnackbarDuration.Long)
+            if (r == SnackbarResult.ActionPerformed) { vm.exitFullscreen(); if (m.downloadable) download(m) else mediaDialog = true }
+        }
+    }
     val tab = ui.current
     LaunchedEffect(tab?.id, tab?.url) { address = tab?.url?.takeIf { it != HOME_URL }.orEmpty() }
     BackHandler(enabled = tab?.canGoBack == true) { vm.back() }
 
-    Column(Modifier.fillMaxSize().statusBarsPadding()) {
+    Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
         Surface(tonalElevation = 2.dp) {
             Column {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -455,11 +709,6 @@ fun BrowserScreen(initialUrl: String? = null) {
                     IconButton(onClick = { vm.forward() }, enabled = tab?.canGoForward == true) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "Forward") }
                     IconButton(onClick = { vm.reload() }) { Icon(Icons.Filled.Refresh, "Refresh") }
                     IconButton(onClick = { vm.toggleBookmark() }, enabled = tab?.url?.startsWith("http") == true) { Icon(if (bookmarked) Icons.Filled.Star else Icons.Filled.StarBorder, "Bookmark") }
-                    Spacer(Modifier.weight(1f))
-                    val media = tab?.media.orEmpty()
-                    TextButton(onClick = { mediaDialog = true }, enabled = media.isNotEmpty()) {
-                        Icon(Icons.Filled.Download, null); Spacer(Modifier.width(4.dp)); Text("Media (${media.size})")
-                    }
                 }
                 if ((tab?.progress ?: 100) < 100) LinearProgressIndicator(progress = { (tab?.progress ?: 0) / 100f }, modifier = Modifier.fillMaxWidth())
                 findQuery?.let { q ->
@@ -481,7 +730,27 @@ fun BrowserScreen(initialUrl: String? = null) {
                 )
             }
             if (tab == null || tab.url == HOME_URL || tab.url.isBlank()) StartPage(onOpen = vm::load)
+            val media = tab?.media.orEmpty()
+            if (media.isNotEmpty()) {
+                val ready = media.count { it.downloadable }
+                ExtendedFloatingActionButton(
+                    onClick = { val single = media.singleOrNull(); if (single != null && single.downloadable) download(single) else mediaDialog = true },
+                    icon = {
+                        BadgedBox(badge = { Badge { Text(media.size.toString()) } }) {
+                            Icon(if (media.any { it.stream }) Icons.Filled.Movie else Icons.Filled.Download, null)
+                        }
+                    },
+                    text = { Text(if (ready > 0) "Download" else "Media") },
+                    expanded = media.any { it.playing } || media.size == 1,
+                    containerColor = if (ready > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { contentDescription = "Detected media (${media.size})" },
+                )
+            }
         }
+    }
+
+    fullscreen?.let { (view, _) ->
+        FullscreenVideo(view, onExit = vm::exitFullscreen, onDownload = { vm.exitFullscreen(); tab?.media?.let { m -> (m.firstOrNull { it.playing } ?: m.singleOrNull())?.let(::download) ?: run { mediaDialog = true } } })
     }
 
     if (tabsDialog) AlertDialog(
@@ -505,25 +774,71 @@ fun BrowserScreen(initialUrl: String? = null) {
         dismissButton = { TextButton(onClick = { vm.newTab(private = true); tabsDialog = false }, enabled = vm.privateSupported) { Text("New private tab") } },
     )
 
-    if (mediaDialog) AlertDialog(
-        onDismissRequest = { mediaDialog = false },
-        title = { Text("Media on this page") },
-        text = {
-            LazyColumn(Modifier.heightIn(max = 420.dp)) {
-                item { Text("Direct media files found on the page. Streams and DRM-protected media cannot be downloaded.", style = MaterialTheme.typography.bodySmall) }
-                items(tab?.media.orEmpty(), key = { it.url }) { m ->
-                    Row(Modifier.fillMaxWidth().clickable {
-                        mediaDialog = false
-                        app.requestAdd(AddRequest(listOf(m.url), buildMap { tab?.url?.let { put("Referer", it) } }, tab?.url))
-                    }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(m.kind, style = MaterialTheme.typography.labelMedium, modifier = Modifier.width(56.dp))
-                        Text(m.name, maxLines = 2, style = MaterialTheme.typography.bodySmall)
+    if (mediaDialog) MediaSheet(tab?.media.orEmpty(), onDismiss = { mediaDialog = false }, onDownload = { m -> mediaDialog = false; download(m) })
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MediaSheet(media: List<DetectedMedia>, onDismiss: () -> Unit, onDownload: (DetectedMedia) -> Unit) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(Modifier.padding(horizontal = 16.dp).navigationBarsPadding()) {
+            Text("Media on this page", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Videos and audio this page loaded or played. HLS streams are saved as MP4. DRM-protected, live and DASH streams can't be downloaded.",
+                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(bottom = 8.dp),
+            )
+            if (media.isEmpty()) Text("Nothing detected yet. Start playing the video, then check here again.", modifier = Modifier.padding(vertical = 16.dp))
+            LazyColumn(Modifier.heightIn(max = 480.dp)) {
+                items(media.sortedByDescending { it.playing }, key = { it.url }) { m ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable(enabled = m.downloadable) { onDownload(m) }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(shape = MaterialTheme.shapes.small, color = if (m.stream) MaterialTheme.colorScheme.tertiaryContainer else MaterialTheme.colorScheme.secondaryContainer) {
+                            Text(m.kind.take(5), style = MaterialTheme.typography.labelMedium, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                        }
+                        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                            Text(
+                                (if (m.playing) "▶ " else "") + (m.title?.takeIf { m.stream && it.isNotBlank() } ?: m.name),
+                                maxLines = 2, style = MaterialTheme.typography.bodyMedium,
+                            )
+                            val info = listOfNotNull(m.details, m.sizeBytes?.let { (if (m.stream) "~" else "") + Formatters.bytes(it) }).joinToString(" · ")
+                            when {
+                                m.pending -> Text("Reading stream…", style = MaterialTheme.typography.bodySmall)
+                                m.blockedReason != null -> Text(m.blockedReason, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                                info.isNotBlank() -> Text(info, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                        if (m.pending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                        else if (m.downloadable) IconButton(onClick = { onDownload(m) }) { Icon(Icons.Filled.Download, "Download ${m.name}") }
                     }
+                    HorizontalDivider()
                 }
             }
-        },
-        confirmButton = { TextButton(onClick = { mediaDialog = false }) { Text("Close") } },
-    )
+            Spacer(Modifier.height(12.dp))
+        }
+    }
+}
+
+/** Page video in fullscreen: covers the app's bars and hides the system bars until closed. */
+@Composable
+private fun FullscreenVideo(view: android.view.View, onExit: () -> Unit, onDownload: () -> Unit) {
+    Dialog(onDismissRequest = onExit, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        DisposableEffect(window) {
+            val controller = window?.let { WindowCompat.getInsetsController(it, it.decorView) }
+            controller?.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller?.hide(WindowInsetsCompat.Type.systemBars())
+            onDispose { controller?.show(WindowInsetsCompat.Type.systemBars()) }
+        }
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            AndroidView(factory = { (view.parent as? ViewGroup)?.removeView(view); view }, modifier = Modifier.fillMaxSize())
+            Row(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
+                IconButton(onClick = onDownload) { Icon(Icons.Filled.Download, "Download this video", tint = Color.White) }
+                IconButton(onClick = onExit) { Icon(Icons.Filled.FullscreenExit, "Exit fullscreen", tint = Color.White) }
+            }
+        }
+    }
 }
 
 @Composable

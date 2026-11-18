@@ -127,6 +127,20 @@ class OutputStore @Inject constructor(@ApplicationContext private val context: C
         return FdSink(pfd)
     }
 
+    /** Read-write descriptor for writers that need one (MediaMuxer). */
+    fun openDescriptor(uri: String): ParcelFileDescriptor {
+        val u = Uri.parse(uri)
+        if (u.scheme == "file") return ParcelFileDescriptor.open(File(u.path!!), ParcelFileDescriptor.MODE_READ_WRITE or ParcelFileDescriptor.MODE_CREATE)
+        return resolver.openFileDescriptor(u, "rw") ?: throw FileNotFoundException(uri)
+    }
+
+    /** Copies a finished private file into an output that was created for it. */
+    suspend fun copyInto(source: File, uri: String) = withContext(Dispatchers.IO) {
+        val u = Uri.parse(uri)
+        val out = if (u.scheme == "file") java.io.FileOutputStream(File(u.path!!)) else resolver.openOutputStream(u, "w") ?: throw IOException("Cannot write $uri")
+        out.use { o -> source.inputStream().use { it.copyTo(o, 256 * 1024) } }
+    }
+
     /** Makes a completed download visible and returns its final URI. */
     suspend fun finalize(uri: String, type: DestinationType, treeUri: String?, displayName: String, mime: String?): String = withContext(Dispatchers.IO) {
         val u = Uri.parse(uri)

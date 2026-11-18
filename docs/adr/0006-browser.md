@@ -9,7 +9,7 @@ Status: accepted (2026-11-18)
   and saved directly. POST-only downloads cannot be replayed and are not supported.
 - Private tabs require the WebView multi-profile feature; without it they are disabled rather than
   offering weaker isolation.
-- Media detection lists direct media files (resource requests and `<video>/<audio>` sources). It
-  does not extract streams (HLS/DASH) and never handles DRM.
+- Media detection lists direct media files and, since ADR-0007, HLS streams and videos that start
+  playing. DASH is detected but not supported; DRM is never handled.
 - Clipboard detection runs only when SDM gains window focus (Android 10+ rule), checks the clip
   description first and stores only a hash of the last suggested link.

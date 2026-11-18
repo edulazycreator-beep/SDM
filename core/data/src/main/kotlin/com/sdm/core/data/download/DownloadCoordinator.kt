@@ -77,6 +77,9 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.random.Random
 
+const val STREAM_HLS = "HLS"
+private const val TRACK_DONE = -2L
+
 /** Why a running transfer was stopped; decides the state it lands in. */
 enum class StopReason { USER_PAUSE, USER_CANCEL, NETWORK_LOST, POLICY, RULE, SCHEDULE, LEASE_REVOKED, RESTART, STORAGE }
 
@@ -87,6 +90,8 @@ enum class StopReason { USER_PAUSE, USER_CANCEL, NETWORK_LOST, POLICY, RULE, SCH
  */
 @Singleton
 class DownloadCoordinator @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
+    private val hls: com.sdm.engine.hls.HlsDownloader,
     private val db: SdmDatabase,
     private val engine: DownloadEngine,
     private val outputs: OutputStore,
@@ -252,6 +257,7 @@ class DownloadCoordinator @Inject constructor(
     private suspend fun runDownload(id: Long) {
         var entity = dao.get(id) ?: return
         val run = running[id] ?: return
+        if (entity.streamType == STREAM_HLS) { runStream(id, entity, run); return }
         val sink = try {
             entity = ensureOutput(entity)
             outputs.open(entity.destinationUri!!)
@@ -399,6 +405,151 @@ class DownloadCoordinator @Inject constructor(
         }
     }
 
+
+    // ------------------------------------------------------------------ streams (HLS)
+
+    private fun streamDir(id: Long) = java.io.File(context.getExternalFilesDir(null) ?: context.filesDir, "streams/$id")
+
+    private fun deleteStreamFiles(id: Long) { runCatching { streamDir(id).deleteRecursively() } }
+
+    /**
+     * Downloads the video rendition (and a separate audio rendition when the stream has one) segment
+     * by segment into private files, then remuxes them into one MP4 in the destination.
+     * Progress per track is kept in download_segments (segmentIndex = track, startByte = segments
+     * written, checkpointByte = bytes written, endByte = TRACK_DONE when finished).
+     */
+    private suspend fun runStream(id: Long, start: DownloadEntity, run: Running) {
+        val dir = streamDir(id).apply { mkdirs() }
+        val tracks = listOfNotNull(start.originalUrl to java.io.File(dir, "video.bin"), start.streamAudioUrl?.let { it to java.io.File(dir, "audio.bin") })
+        val headers = if (start.hasSecrets) secrets.get(id) else emptyMap()
+        var bytesBefore = 0L
+        var stats = com.sdm.engine.TransferStats(0, 0, false, false, 0, 0, 0, false)
+        for ((t, pair) in tracks.withIndex()) {
+            val (url, file) = pair
+            var row = db.segments().forDownload(id).firstOrNull { it.segmentIndex == t }
+            if (row != null && row.endByte == TRACK_DONE && file.length() >= row.checkpointByte) { bytesBefore += row.checkpointByte; continue }
+            // The partial file was removed (storage cleaned): start this track over instead of writing at a stale offset.
+            if (row != null && file.length() < row.checkpointByte) row = null
+            // Bytes written after the last checkpoint are fetched again; drop them so the file ends cleanly.
+            java.io.RandomAccessFile(file, "rw").use { it.setLength(row?.checkpointByte ?: 0L) }
+            val listener = StreamListener(id, t, bytesBefore, start.totalBytes)
+            val request = com.sdm.engine.hls.HlsRequest(
+                playlistUrl = url, headers = headers, concurrency = start.maxConnections.coerceIn(1, 8),
+                resumeSegments = row?.startByte?.toInt() ?: 0, resumeBytes = row?.checkpointByte ?: 0,
+                segmentRetries = settings.retryMaxAttempts.coerceIn(1, 8),
+            )
+            val result = try {
+                com.sdm.engine.storage.FileSink(file).use { sink -> hls.run(request, sink, run.limiter, listener) }
+            } catch (e: CancellationException) {
+                withContext(NonCancellable) {
+                    listener.awaitPending()
+                    onStopped(id, run.stopReason ?: StopReason.LEASE_REVOKED)
+                }
+                throw e
+            }
+            withContext(NonCancellable) { listener.awaitPending() }
+            stats = stats.copy(
+                segments = stats.segments + result.stats.segments, segmentFailures = stats.segmentFailures + result.stats.segmentFailures,
+                connectionsUsed = maxOf(stats.connectionsUsed, request.concurrency), bytesThisSession = stats.bytesThisSession + result.stats.bytesThisSession,
+                activeMillis = stats.activeMillis + result.stats.activeMillis,
+            )
+            when (result) {
+                is TransferResult.Failed -> { withContext(NonCancellable) { onFailed(id, result.copy(stats = stats)) }; return }
+                is TransferResult.Completed -> {
+                    db.segments().insertAll(listOf(SegmentEntity(id, t, listener.segmentsTotal.toLong(), TRACK_DONE, result.totalBytes)))
+                    bytesBefore += result.totalBytes
+                }
+            }
+        }
+        withContext(NonCancellable) { finishStream(id, tracks.map { it.second }, stats) }
+    }
+
+    private suspend fun finishStream(id: Long, files: List<java.io.File>, stats: com.sdm.engine.TransferStats) {
+        if (dao.get(id)?.state == DownloadState.PREPARING) transition(id, DownloadEvent.PROBED)
+        transition(id, DownloadEvent.VERIFY)
+        val e = dao.get(id) ?: return
+        val probe = com.sdm.core.data.media.Remuxer.probe(files)
+        val audioOnly = !probe.hasVideo && probe.hasAudio
+        val base = com.sdm.core.common.FileNames.baseName(e.fileName)
+        val category = if (audioOnly) com.sdm.core.common.FileCategory.MUSIC else com.sdm.core.common.FileCategory.VIDEO
+        var mime = if (audioOnly) "audio/mp4" else "video/mp4"
+        val result = runCatching {
+            var handle = outputs.create("$base.${if (audioOnly) "m4a" else "mp4"}", mime, category, e.destinationType, e.destinationTreeUri)
+            val remuxed = (probe.hasVideo || probe.hasAudio) && outputs.openDescriptor(handle.uri).use { com.sdm.core.data.media.Remuxer.toMp4(files, it.fileDescriptor) }
+            if (!remuxed) {
+                outputs.delete(handle.uri)
+                val fmp4 = files.first().inputStream().use { s -> ByteArray(8).also { s.read(it) } }.copyOfRange(4, 8).decodeToString() == "ftyp"
+                mime = if (fmp4) "video/mp4" else "video/mp2t"
+                handle = outputs.create("$base.${if (fmp4) "mp4" else "ts"}", mime, category, e.destinationType, e.destinationTreeUri)
+                outputs.copyInto(files.first(), handle.uri)
+                event(id, EventType.RULE_APPLIED, "Could not convert the stream to MP4; saved it in its original format")
+            }
+            val finalUri = outputs.finalize(handle.uri, e.destinationType, e.destinationTreeUri, handle.displayName, mime)
+            val size = runCatching { outputs.openDescriptor(finalUri).use { it.statSize } }.getOrDefault(files.sumOf { it.length() })
+            Triple(finalUri, handle, size)
+        }
+        val (finalUri, handle, size) = result.getOrElse { ex -> fail(e, ErrorCode.STORAGE_ERROR, ex.message, null); return }
+        val done = e.copy(
+            destinationUri = finalUri, fileName = handle.displayName, mimeType = mime, category = category, destinationLabel = handle.label,
+            totalBytes = size, downloadedBytes = size, completedAt = now(), updatedAt = now(), activeMillis = e.activeMillis + stats.activeMillis,
+            errorCode = null, errorMessage = null, httpStatus = null, activeConnections = 0, connectionsUsed = stats.connectionsUsed,
+            segmentFailures = e.segmentFailures + stats.segmentFailures,
+        )
+        dao.updatePreservingState(done)
+        if (transition(id, DownloadEvent.VERIFIED) == DownloadState.COMPLETED) {
+            db.segments().clear(id)
+            deleteStreamFiles(id)
+            event(id, EventType.COMPLETED, "Stream saved as ${handle.displayName} (${com.sdm.core.common.Formatters.bytes(size)})")
+            analytics.session(done, stats, succeeded = true)
+            db.files().upsert(listOf(FileIndexEntity(finalUri, handle.displayName, size, mime, category, now(), handle.label, id, null, null, e.destinationTreeUri)))
+            notifier.completed(done.toDomain(), finalUri)
+        }
+    }
+
+    private inner class StreamListener(private val id: Long, private val track: Int, private val bytesBefore: Long, private val estimate: Long?) : com.sdm.engine.hls.HlsListener {
+        private val pending = java.util.concurrent.CopyOnWriteArrayList<Job>()
+        @Volatile var segmentsTotal = 0
+        private var lastSampleAt = System.currentTimeMillis()
+        private var lastSampleBytes = -1L
+        suspend fun awaitPending() { pending.forEach { it.join() } }
+
+        override fun onPlaylist(segments: Int, durationSec: Double, encrypted: Boolean, fragmentedMp4: Boolean) {
+            segmentsTotal = segments
+            pending += scope.launch {
+                dao.get(id)?.let { e -> dao.updatePreservingState(e.copy(startedAt = e.startedAt ?: now(), rangeSupport = RangeSupport.UNSUPPORTED, updatedAt = now())) }
+                if (transition(id, DownloadEvent.PROBED) == DownloadState.DOWNLOADING || track > 0) {
+                    event(id, EventType.STARTED, "${if (track == 0) "Video" else "Audio"} stream: $segments segments, ${com.sdm.core.common.Formatters.duration(durationSec.toLong())}" + if (encrypted) ", AES-128 encrypted" else "")
+                }
+            }
+        }
+
+        override fun onProgress(segmentsDone: Int, segmentsTotal: Int, bytesWritten: Long, speedBps: Long) {
+            val downloaded = bytesBefore + bytesWritten
+            val total = estimate ?: if (segmentsDone > 0) bytesBefore + bytesWritten * segmentsTotal / segmentsDone else null
+            val lp = LiveProgress(downloaded, total?.coerceAtLeast(downloaded), speedBps, 1, listOf(SegmentProgressView(0, segmentsTotal.toLong() - 1, segmentsDone.toLong(), true)))
+            _live.update { it + (id to lp) }
+            scope.launch {
+                val e = dao.get(id) ?: return@launch
+                if (settings.perDownloadNotifications) notifier.progress(e.toDomain(), lp)
+                val now = System.currentTimeMillis()
+                if (lastSampleBytes < 0) { lastSampleBytes = downloaded; lastSampleAt = now }
+                else if (now - lastSampleAt >= 5_000) {
+                    analytics.sample(id, e.originalUrl, downloaded - lastSampleBytes, now - lastSampleAt, 1)
+                    lastSampleBytes = downloaded; lastSampleAt = now
+                }
+            }
+        }
+
+        override suspend fun onCheckpoint(segmentsDone: Int, bytesWritten: Long) {
+            db.segments().insertAll(listOf(SegmentEntity(id, track, segmentsDone.toLong(), -1, bytesWritten)))
+            dao.updateProgress(id, bytesBefore + bytesWritten, estimate, 0, now())
+        }
+
+        override fun onSegmentRetry(index: Int, reason: String) {
+            scope.launch { event(id, EventType.SEGMENT_FAILED, "Stream segment $index: $reason; retrying") }
+        }
+    }
+
     // ------------------------------------------------------------------ outcomes
 
     private suspend fun onCompleted(id: Long, r: TransferResult.Completed) {
@@ -475,6 +626,7 @@ class DownloadCoordinator @Inject constructor(
         ErrorKind.STORAGE -> ErrorCode.STORAGE_ERROR
         ErrorKind.CHECKSUM_MISMATCH -> ErrorCode.CHECKSUM_MISMATCH
         ErrorKind.INVALID_RESPONSE -> ErrorCode.INVALID_RESPONSE
+        ErrorKind.UNSUPPORTED -> ErrorCode.UNSUPPORTED_SOURCE
     }
 
     /** Lands a cancelled run in the state its stop reason calls for. */
@@ -552,6 +704,7 @@ class DownloadCoordinator @Inject constructor(
         val d = dao.get(id) ?: return
         if (transition(id, DownloadEvent.CANCEL) != null) {
             if (deletePartial && d.state != DownloadState.COMPLETED) {
+                deleteStreamFiles(id)
                 d.destinationUri?.let { outputs.delete(it) }
                 db.segments().clear(id)
                 dao.updatePreservingState(dao.get(id)!!.copy(destinationUri = null, downloadedBytes = 0, updatedAt = now()))
@@ -566,6 +719,7 @@ class DownloadCoordinator @Inject constructor(
         val d = dao.get(id) ?: return
         if (d.state.isActive || d.state == DownloadState.QUEUED || d.state == DownloadState.WAITING_FOR_NETWORK) transition(id, DownloadEvent.PAUSE)
         if (d.state != DownloadState.COMPLETED) d.destinationUri?.let { outputs.delete(it) }
+        deleteStreamFiles(id)
         db.segments().clear(id)
         val fresh = dao.get(id) ?: return
         dao.updatePreservingState(fresh.copy(
@@ -582,6 +736,7 @@ class DownloadCoordinator @Inject constructor(
             running[id]?.let { it.stopReason = StopReason.USER_CANCEL; it.job.cancel(); it.job.join() }
             val d = dao.get(id) ?: continue
             if (deleteFiles || d.state != DownloadState.COMPLETED) d.destinationUri?.let { outputs.delete(it); db.files().delete(listOf(it)) }
+            deleteStreamFiles(id)
             notifier.cancel(id)
         }
         dao.delete(ids.toList())

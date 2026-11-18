@@ -77,7 +77,25 @@ been run yet (see "Not yet verified").
 - One user-initiated transfer job holds the lease for all running downloads (not one per download).
 - Platform limits handled per the technical plan: background start limits, boot restrictions,
   clipboard focus rule, scoped storage (no All Files Access), private tabs need WebView
-  multi-profile, POST-only downloads unsupported, no HLS/DASH or DRM.
+  multi-profile, POST-only downloads unsupported, no DASH or DRM (HLS supported, ADR-0007).
+
+## Video streams and browser video detection (added 2026-11-18, ADR-0007)
+- Engine: HLS parser and downloader (`download-engine/.../hls`): master/media playlists, parallel
+  segments written in order, AES-128, fMP4 init segments, byte ranges, resume from checkpoints,
+  segment retries, live/DRM refusal, credentials scoped to the playlist host. Unit tests: `HlsTest`.
+- App: `DownloadCoordinator.runStream` (video + separate audio track, progress, pause/resume,
+  cancel cleanup), remux to MP4 (`core/data/media/Remuxer`), fallback to the original format.
+- Browser: detects playlists (URL, fetch/XHR content type), media elements that load or play, and
+  offers "Video detected — Download" when a video starts playing; detected-media button and sheet
+  with qualities, duration, estimated size and reasons when blocked; page videos can go fullscreen.
+- Add dialog: quality chips for streams; pasted `.m3u8` links and playlist content types are
+  recognised.
+- Not yet verified on a device: remuxing of real-world streams, detection on major video sites.
+
+## UI fixes (2026-11-18)
+- Top bars drew under the status bar: the outer app Scaffold consumed the system-bar insets
+  without applying them. It now reserves only the bottom-navigation height; each screen handles
+  status/navigation bars itself. Browser content also respects the keyboard (IME) inset.
 
 ## Known issues and limits
 - MediaStore removes pending items after about 7 days; a download paused that long restarts into a
@@ -86,6 +104,7 @@ been run yet (see "Not yet verified").
   cannot be updated by a differently signed build (uninstall first).
 - Dependencies are pinned to versions verified together (AndroidX mid-2025 line); updating them is
   pending.
+- Stream sizes are estimates until the download finishes; DASH-only sites cannot be downloaded.
 - Browser interception, scheduling wake-ups, boot recovery and notification actions have no
   automated tests yet (they need device-level automation).
 

@@ -62,6 +62,12 @@ data class DownloadEntity(
     val updatedAt: Long,
     val activeMillis: Long = 0,
     val version: Long = 0,
+    /** null for files; "HLS" for streams saved by segment. Added in schema v2. */
+    val streamType: String? = null,
+    /** Separate audio rendition of an HLS stream, muxed in after download. */
+    val streamAudioUrl: String? = null,
+    /** Quality chosen by the user, e.g. "1080p · 4.0 Mbps". */
+    val streamLabel: String? = null,
 )
 
 @Entity(

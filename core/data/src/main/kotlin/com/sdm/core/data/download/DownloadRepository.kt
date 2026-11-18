@@ -68,6 +68,10 @@ data class NewDownload(
     val checksumExpected: String? = null,
     val startPaused: Boolean = false,
     val queueId: Long = SdmDatabase.MAIN_QUEUE_ID,
+    /** Set for HLS streams: [url] is the chosen video playlist. */
+    val streamType: String? = null,
+    val streamAudioUrl: String? = null,
+    val streamLabel: String? = null,
 )
 
 @Singleton
@@ -80,6 +84,7 @@ class DownloadRepository @Inject constructor(
     private val settings: SettingsRepository,
     private val analytics: AnalyticsRecorder,
     private val outputs: OutputStore,
+    private val streams: com.sdm.engine.hls.StreamInspector,
 ) {
     private val dao = db.downloads()
 
@@ -116,6 +121,10 @@ class DownloadRepository @Inject constructor(
         )
     }
 
+    /** Lists qualities of an HLS stream (playlists only) and whether it can be downloaded. */
+    suspend fun inspectStream(url: String, headers: Map<String, String> = emptyMap()): Result<com.sdm.engine.hls.StreamInfo> =
+        runCatching { streams.inspect(url.trim(), headers) }
+
     suspend fun applyRules(info: LinkInfo): EnqueueDecision = RuleEngine.onEnqueue(rules.current(), DownloadFacts(info.fileName, info.mimeType, info.sizeBytes, info.finalUrl))
 
     suspend fun findDuplicate(url: String, fileName: String, size: Long?): DuplicateMatch? {
@@ -139,6 +148,7 @@ class DownloadRepository @Inject constructor(
             scheduledAt = n.scheduledAt, checksumAlgorithm = n.checksumAlgorithm?.takeIf { !n.checksumExpected.isNullOrBlank() },
             checksumExpected = n.checksumExpected?.trim()?.ifBlank { null }, sourcePageUrl = n.sourcePageUrl,
             hasSecrets = n.headers.isNotEmpty(), createdAt = now, updatedAt = now,
+            streamType = n.streamType, streamAudioUrl = n.streamAudioUrl, streamLabel = n.streamLabel,
         )
         val id = dao.insert(entity)
         secrets.put(id, n.headers)

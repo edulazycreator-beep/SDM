@@ -54,7 +54,10 @@ data class Download(
     val completedAt: Long?,
     val activeMillis: Long,
     val important: Boolean = false,
+    val streamType: String? = null,
+    val streamLabel: String? = null,
 ) {
+    val isStream: Boolean get() = streamType != null
     val progressPercent: Int get() = com.sdm.core.common.Formatters.percent(downloadedBytes, totalBytes)
     val averageSpeedBps: Long get() = if (activeMillis <= 0) 0 else downloadedBytes * 1000 / activeMillis
     val host: String? get() = com.sdm.core.common.Urls.host(originalUrl)

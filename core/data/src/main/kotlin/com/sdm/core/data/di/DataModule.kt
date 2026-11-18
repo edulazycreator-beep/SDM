@@ -36,6 +36,7 @@ object DataModule {
                     db.execSQL("INSERT INTO queues(id, name, maxConcurrent, ordering, scheduleJson, paused) VALUES(1, 'Main', 3, 'MANUAL', NULL, 0)")
                 }
             })
+            .addMigrations(SdmDatabase.MIGRATION_1_2)
             .build()
 
     @Provides fun downloadDao(db: SdmDatabase) = db.downloads()
@@ -50,4 +51,11 @@ object DataModule {
 
     @Provides @Singleton
     fun engine(clients: HttpClientProvider): DownloadEngine = DownloadEngine({ clients.get() })
+
+    /** Shares the engine's global limiter so the speed limit covers file and stream downloads together. */
+    @Provides @Singleton
+    fun hls(clients: HttpClientProvider, engine: DownloadEngine): com.sdm.engine.hls.HlsDownloader = com.sdm.engine.hls.HlsDownloader({ clients.get() }, engine.globalLimiter)
+
+    @Provides @Singleton
+    fun streamInspector(hls: com.sdm.engine.hls.HlsDownloader): com.sdm.engine.hls.StreamInspector = com.sdm.engine.hls.StreamInspector(hls)
 }

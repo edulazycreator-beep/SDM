@@ -1,5 +1,7 @@
 package com.sdm.downloadmanager.ui
 
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -144,11 +146,17 @@ fun SdmApp(vm: AppViewModel) {
                         NavigationRailItem(selected = dest?.hierarchy?.any { t.matches(it) } == true, onClick = { go(t.route) }, icon = { Icon(t.icon, t.label) }, label = { Text(t.label) })
                     }
                 }
+                val bottomBar = !wide && showBars
                 Scaffold(
                     modifier = Modifier.weight(1f),
-                    snackbarHost = { SnackbarHost(snackbar) },
+                    // Each screen's own Scaffold handles the status and navigation bars. This outer one
+                    // only reserves room for the bottom navigation, so it must not apply or consume
+                    // system-bar insets itself (it used to consume the top inset, which made every top
+                    // bar draw under the status bar).
+                    contentWindowInsets = WindowInsets(0, 0, 0, 0),
+                    snackbarHost = { SnackbarHost(snackbar, if (bottomBar) Modifier else Modifier.navigationBarsPadding()) },
                     bottomBar = {
-                        if (!wide && showBars) NavigationBar {
+                        if (bottomBar) NavigationBar {
                             topLevels.forEach { t ->
                                 NavigationBarItem(selected = dest?.hierarchy?.any { t.matches(it) } == true, onClick = { go(t.route) }, icon = { Icon(t.icon, t.label) }, label = { Text(t.label) })
                             }

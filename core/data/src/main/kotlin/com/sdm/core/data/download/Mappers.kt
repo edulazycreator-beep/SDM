@@ -14,7 +14,7 @@ fun DownloadEntity.toDomain() = Download(
     destinationLabel = destinationLabel, rangeSupport = rangeSupport, errorCode = ErrorCode.parse(errorCode), errorMessage = errorMessage,
     httpStatus = httpStatus, retryCount = retryCount, nextRetryAt = nextRetryAt, scheduledAt = scheduledAt,
     checksumAlgorithm = checksumAlgorithm, checksumExpected = checksumExpected, checksumActual = checksumActual,
-    sourcePageUrl = sourcePageUrl, createdAt = createdAt, startedAt = startedAt, completedAt = completedAt, activeMillis = activeMillis, important = important,
+    sourcePageUrl = sourcePageUrl, createdAt = createdAt, startedAt = startedAt, completedAt = completedAt, activeMillis = activeMillis, important = important, streamType = streamType, streamLabel = streamLabel,
 )
 
 fun EventEntity.toDomain() = DownloadEventRecord(id, downloadId, timestamp, type, httpStatus, ErrorCode.parse(errorCode), detail)

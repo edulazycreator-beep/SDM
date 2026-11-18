@@ -98,6 +98,8 @@ sealed interface AddStep {
         val speedLimitKb: String,
         val checksumAlgorithm: String,
         val checksum: String,
+        val stream: com.sdm.engine.hls.StreamInfo? = null,
+        val streamOption: com.sdm.engine.hls.StreamOption? = null,
     ) : AddStep
     data class Batch(val urls: List<String>, val startPaused: Boolean = false) : AddStep
     data class Done(val message: String) : AddStep
@@ -138,10 +140,14 @@ class AddDownloadViewModel @Inject constructor(
     private fun inspect(url: String) = viewModelScope.launch {
         _step.value = AddStep.Inspecting
         val r = request
+        if (r?.streamHint == true || com.sdm.engine.hls.HlsParser.streamKindOfUrl(url) != null || com.sdm.engine.hls.HlsParser.isHlsContentType(r?.mime)) {
+            inspectStream(url); return@launch
+        }
         val info = repo.inspect(url, r?.headers.orEmpty(), r?.contentDisposition, r?.mime).let { i ->
             val hinted = r?.fileNameHint?.let { FileNames.sanitize(it) }
             if (i.sizeBytes == null && r?.sizeHint != null && r.sizeHint > 0) i.copy(sizeBytes = r.sizeHint, fileName = hinted ?: i.fileName) else if (hinted != null) i.copy(fileName = hinted) else i
         }
+        if (com.sdm.engine.hls.HlsParser.isHlsContentType(info.mimeType)) { inspectStream(url); return@launch }
         val s = settings.current()
         val decision = repo.applyRules(info)
         val dup = repo.findDuplicate(info.url, info.fileName, info.sizeBytes)
@@ -153,6 +159,27 @@ class AddDownloadViewModel @Inject constructor(
             connections = if (info.rangeSupported) connections else 1, policy = decision.networkPolicy ?: s.networkPolicy,
             priority = Priority.NORMAL, category = decision.category ?: info.category, folder = folder, startAt = null,
             startPaused = false, speedLimitKb = decision.speedLimitBps?.let { (it / 1024).toString() } ?: "", checksumAlgorithm = "SHA-256", checksum = "",
+        )
+    }
+
+    private suspend fun inspectStream(url: String) {
+        val r = request
+        val s = settings.current()
+        val result = repo.inspectStream(url, r?.headers.orEmpty())
+        val stream = result.getOrElse { e ->
+            com.sdm.engine.hls.StreamInfo(com.sdm.engine.hls.StreamKind.HLS, url, emptyList(), null, false, false, false, "Could not read the stream: ${com.sdm.core.common.Redactor.text(e.message ?: e.javaClass.simpleName)}")
+        }
+        val option = stream.options.firstOrNull()
+        val title = (r?.titleHint?.takeIf { it.isNotBlank() } ?: FileNames.fromUrl(r?.sourcePage ?: url)?.let { FileNames.baseName(it) } ?: "video").take(80)
+        val name = FileNames.sanitize("$title.mp4")
+        val info = LinkInfo(url, url, name, "video/mp4", option?.estimatedBytes, FileCategory.VIDEO, true, stream.blockedReason)
+        val decision = repo.applyRules(info)
+        val dup = repo.findDuplicate(option?.videoPlaylistUrl ?: url, name, null)
+        val folder = decision.treeUri?.let { t -> files.grantedFolders().firstOrNull { it.treeUri == t } }
+        _step.value = AddStep.Confirm(
+            info = info, fileName = name, decision = decision, duplicate = dup, recommendation = null, connections = 4,
+            policy = decision.networkPolicy ?: s.networkPolicy, priority = Priority.NORMAL, category = FileCategory.VIDEO, folder = folder,
+            startAt = null, startPaused = false, speedLimitKb = "", checksumAlgorithm = "SHA-256", checksum = "", stream = stream, streamOption = option,
         )
     }
 
@@ -172,6 +199,19 @@ class AddDownloadViewModel @Inject constructor(
         if (resolution == DuplicateResolution.REPLACE_EXISTING) c.duplicate?.let { repo.delete(listOf(it.existing.downloadId), deleteFiles = true) }
         if (resolution == DuplicateResolution.RENAME_NEW) name = FileNames.numbered(name, 2)
         val r = request
+        val opt = c.streamOption
+        if (c.stream != null) {
+            if (opt == null || c.stream.blockedReason != null) return@launch
+            repo.enqueue(NewDownload(
+                url = opt.videoPlaylistUrl, fileName = name, mimeType = "video/mp4", sizeBytes = opt.estimatedBytes, headers = r?.headers.orEmpty(),
+                sourcePageUrl = r?.sourcePage, category = FileCategory.VIDEO, treeUri = c.folder?.treeUri, treeLabel = c.folder?.name,
+                connections = c.connections, networkPolicy = c.policy, speedLimitBps = (c.speedLimitKb.toLongOrNull() ?: 0) * 1024,
+                priority = c.priority, scheduledAt = c.startAt, startPaused = c.startPaused,
+                streamType = com.sdm.core.data.download.STREAM_HLS, streamAudioUrl = opt.audioPlaylistUrl, streamLabel = opt.label,
+            ))
+            _step.value = AddStep.Done("Added $name")
+            return@launch
+        }
         repo.enqueue(NewDownload(
             url = c.info.url, fileName = name, mimeType = c.info.mimeType, sizeBytes = c.info.sizeBytes, headers = r?.headers.orEmpty(),
             sourcePageUrl = r?.sourcePage, category = c.category, treeUri = c.folder?.treeUri, treeLabel = c.folder?.name,
@@ -268,9 +308,26 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             }
                         }
                         s.info.error?.let { Warning(it) }
+                        s.stream?.let { st ->
+                            Text(
+                                "HLS video stream" + (st.durationSec?.let { " · ${Formatters.duration(it.toLong())}" } ?: "") + if (st.encrypted && !st.drm) " · AES-128" else "",
+                                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
+                            )
+                            if (st.options.isNotEmpty()) {
+                                Text("Quality", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    st.options.forEach { o ->
+                                        FilterChip(s.streamOption == o, { vm.update { it.copy(streamOption = o, info = it.info.copy(sizeBytes = o.estimatedBytes)) } }, {
+                                            Text(o.label + (o.estimatedBytes?.let { " · ~${Formatters.bytes(it)}" } ?: ""))
+                                        })
+                                    }
+                                }
+                                Text("Saved as MP4 (audio and video combined). Sizes are estimates from the stream bitrate.", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                         if (s.decision.askConfirmation) Warning("Rule: this is a large file (${Formatters.bytes(s.info.sizeBytes)}). Confirm to download.")
                         s.duplicate?.let { Warning(it.kind.message + " (${it.existing.fileName})") }
-                        if (!s.info.rangeSupported && s.info.error == null) Text("The server does not support resuming; SDM will use one connection.", style = MaterialTheme.typography.bodySmall, color = status.warning)
+                        if (s.stream == null && !s.info.rangeSupported && s.info.error == null) Text("The server does not support resuming; SDM will use one connection.", style = MaterialTheme.typography.bodySmall, color = status.warning)
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(s.fileName, { v -> vm.update { it.copy(fileName = v) } }, Modifier.fillMaxWidth(), label = { Text("File name") }, singleLine = true)
                         InfoRow("Source", com.sdm.core.common.Redactor.url(s.info.finalUrl))
@@ -280,9 +337,9 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             vm.grantedFolders().take(3).forEach { f -> FilterChip(s.folder?.treeUri == f.treeUri, { vm.update { it.copy(folder = f) } }, { Text(f.name) }) }
                             FilterChip(false, { folderPicker.launch(null) }, { Text("Choose folder…") })
                         }
-                        Text("Connections", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                        Text(if (s.stream != null) "Parallel segments" else "Connections", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            CONNECTION_PROFILES.forEach { n -> FilterChip(s.connections == n, { vm.update { it.copy(connections = n) } }, { Text("$n") }, enabled = s.info.rangeSupported || n == 1) }
+                            (if (s.stream != null) listOf(1, 2, 4, 8) else CONNECTION_PROFILES).forEach { n -> FilterChip(s.connections == n, { vm.update { it.copy(connections = n) } }, { Text("$n") }, enabled = s.info.rangeSupported || n == 1) }
                         }
                         s.recommendation?.takeIf { it.sampleCount > 0 }?.let { Text("Suggested: ${it.connections} · ${it.basis}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
                         Text("Network", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
@@ -302,15 +359,15 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             FilterChip(s.startPaused, { vm.update { it.copy(startPaused = !it.startPaused, startAt = null) } }, { Text("Add paused") })
                         }
                         OutlinedTextField(s.speedLimitKb, { v -> vm.update { it.copy(speedLimitKb = v.filter(Char::isDigit).take(7)) } }, Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text("Speed limit (KB/s, empty = unlimited)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                        OutlinedTextField(s.checksum, { v -> vm.update { it.copy(checksum = v.trim()) } }, Modifier.fillMaxWidth().padding(top = 4.dp), label = { Text("Expected checksum (optional)") }, singleLine = true)
-                        if (s.checksum.isNotBlank()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (s.stream == null) OutlinedTextField(s.checksum, { v -> vm.update { it.copy(checksum = v.trim()) } }, Modifier.fillMaxWidth().padding(top = 4.dp), label = { Text("Expected checksum (optional)") }, singleLine = true)
+                        if (s.stream == null && s.checksum.isNotBlank()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             listOf("MD5", "SHA-1", "SHA-256", "SHA-512").forEach { a -> FilterChip(s.checksumAlgorithm == a, { vm.update { it.copy(checksumAlgorithm = a) } }, { Text(a) }) }
                         }
                         if (s.decision.appliedRules.isNotEmpty()) Text("Rules applied: ${s.decision.appliedRules.joinToString()}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
                     }
                 },
                 confirmButton = {
-                    if (s.duplicate == null) TextButton(onClick = { vm.confirm() }, enabled = s.fileName.isNotBlank()) { Text(if (s.decision.askConfirmation) "Confirm download" else "Download") }
+                    if (s.duplicate == null) TextButton(onClick = { vm.confirm() }, enabled = s.fileName.isNotBlank() && (s.stream == null || (s.stream.blockedReason == null && s.streamOption != null))) { Text(if (s.decision.askConfirmation) "Confirm download" else "Download") }
                     else Column(horizontalAlignment = Alignment.End) {
                         TextButton(onClick = { vm.confirm(DuplicateResolution.DOWNLOAD_ANYWAY) }) { Text("Download anyway") }
                         if (s.duplicate.kind != DuplicateKind.SAME_URL_ACTIVE) TextButton(onClick = { vm.confirm(DuplicateResolution.REPLACE_EXISTING) }) { Text("Replace existing") }

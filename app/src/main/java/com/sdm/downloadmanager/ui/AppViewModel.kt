@@ -23,6 +23,10 @@ data class AddRequest(
     val mime: String? = null,
     val sizeHint: Long? = null,
     val fileNameHint: String? = null,
+    /** The browser saw this URL used as a video stream (HLS playlist). */
+    val streamHint: Boolean = false,
+    /** Page or video title, used to name stream downloads. */
+    val titleHint: String? = null,
 )
 
 @HiltViewModel
