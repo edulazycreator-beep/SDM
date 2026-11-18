@@ -107,6 +107,9 @@ sealed interface AddStep {
         val audioOnly: Boolean = false,
         /** Alternative links for the same file, one per line. */
         val mirrorsText: String = "",
+        /** The link is a magnet or .torrent: [torrent] downloads its contents instead of the file itself. */
+        val torrentCapable: Boolean = false,
+        val torrent: Boolean = false,
     ) : AddStep
     data class Batch(val urls: List<String>, val startPaused: Boolean = false) : AddStep
     data class Done(val message: String) : AddStep
@@ -148,6 +151,8 @@ class AddDownloadViewModel @Inject constructor(
         _step.value = AddStep.Inspecting
         // ftp://user:password@host/... : the login moves into the encrypted headers, never into the stored link.
         var url = rawUrl
+        if (com.sdm.core.common.Urls.isMagnet(rawUrl)) { magnet(rawUrl); return@launch }
+        if (rawUrl.startsWith("file:") && rawUrl.endsWith(".torrent", true)) { magnet(rawUrl); return@launch }
         if (com.sdm.engine.remote.RemoteFileEngine.handles(rawUrl)) {
             val (clean, login) = com.sdm.engine.remote.RemoteLogin.split(rawUrl)
             if (login != null) {
@@ -164,6 +169,7 @@ class AddDownloadViewModel @Inject constructor(
             if (i.sizeBytes == null && r?.sizeHint != null && r.sizeHint > 0) i.copy(sizeBytes = r.sizeHint, fileName = hinted ?: i.fileName) else if (hinted != null) i.copy(fileName = hinted) else i
         }
         if (com.sdm.engine.hls.HlsParser.isHlsContentType(info.mimeType) || info.mimeType?.contains("dash+xml") == true) { inspectStream(url); return@launch }
+        val isTorrentFile = info.mimeType == "application/x-bittorrent" || FileNames.extension(info.fileName).equals("torrent", true)
         val s = settings.current()
         val decision = repo.applyRules(info)
         val dup = repo.findDuplicate(info.url, info.fileName, info.sizeBytes)
@@ -175,6 +181,21 @@ class AddDownloadViewModel @Inject constructor(
             connections = if (info.rangeSupported) connections else 1, policy = decision.networkPolicy ?: s.networkPolicy,
             priority = Priority.NORMAL, category = decision.category ?: info.category, folder = folder, startAt = null,
             startPaused = false, speedLimitKb = decision.speedLimitBps?.let { (it / 1024).toString() } ?: "", checksumAlgorithm = "SHA-256", checksum = "",
+        )
+        if (isTorrentFile) markTorrent()
+    }
+
+    private fun r0Name(url: String): String? = if (url.startsWith("file:")) url.substringAfterLast('/').removeSuffix(".torrent").removeSuffix(".TORRENT").substringAfter('-').ifBlank { null } else null
+
+    private suspend fun magnet(url: String) {
+        val s = settings.current()
+        val name = FileNames.sanitize(com.sdm.core.common.Urls.magnetName(url) ?: r0Name(url) ?: "Torrent")
+        val info = LinkInfo(url, url, name, null, null, FileCategory.OTHER, true, null)
+        val decision = repo.applyRules(info)
+        _step.value = AddStep.Confirm(
+            info = info, fileName = name, decision = decision, duplicate = repo.findDuplicate(url, name, null), recommendation = null, connections = 1,
+            policy = decision.networkPolicy ?: s.networkPolicy, priority = Priority.NORMAL, category = FileCategory.OTHER, folder = null,
+            startAt = null, startPaused = false, speedLimitKb = "", checksumAlgorithm = "SHA-256", checksum = "", torrentCapable = true, torrent = true,
         )
     }
 
@@ -208,6 +229,8 @@ class AddDownloadViewModel @Inject constructor(
             audioOnly = option != null && option.height == null && stream.options.all { it.height == null },
         )
     }
+
+    private fun markTorrent() { (_step.value as? AddStep.Confirm)?.let { c -> _step.value = c.copy(torrentCapable = true, torrent = true) } }
 
     fun update(transform: (AddStep.Confirm) -> AddStep.Confirm) {
         (_step.value as? AddStep.Confirm)?.let { _step.value = transform(it) }
@@ -245,6 +268,17 @@ class AddDownloadViewModel @Inject constructor(
                 streamAudioOnly = c.audioOnly,
             ))
             _step.value = AddStep.Done("Added $streamName")
+            return@launch
+        }
+        if (c.torrent) {
+            val tName = FileNames.baseName(name).ifBlank { "Torrent" }
+            repo.enqueue(NewDownload(
+                url = c.info.url, fileName = tName, headers = r?.headers.orEmpty(), sourcePageUrl = r?.sourcePage, category = FileCategory.OTHER,
+                treeUri = c.folder?.treeUri, treeLabel = c.folder?.name, connections = 1, networkPolicy = c.policy,
+                speedLimitBps = (c.speedLimitKb.toLongOrNull() ?: 0) * 1024, priority = c.priority, scheduledAt = c.startAt, startPaused = c.startPaused,
+                streamType = com.sdm.core.data.download.STREAM_TORRENT,
+            ))
+            _step.value = AddStep.Done("Added torrent $tName")
             return@launch
         }
         repo.enqueue(NewDownload(
@@ -344,6 +378,16 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             }
                         }
                         s.info.error?.let { Warning(it) }
+                        if (s.torrentCapable) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
+                                Text("Download the torrent's files", modifier = Modifier.weight(1f))
+                                Switch(s.torrent, { v -> vm.update { it.copy(torrent = v) } }, enabled = !com.sdm.core.common.Urls.isMagnet(s.info.url))
+                            }
+                            if (s.torrent) Text(
+                                "BitTorrent: details and files come from other peers, so the size appears once the torrent is found. While downloading, SDM also uploads pieces to others, as the protocol requires; it stops when the download finishes. Only download content you have the right to.",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                         s.stream?.let { st ->
                             Text(
                                 "${st.kind.name} video stream" + (st.durationSec?.let { " · ${Formatters.duration(it.toLong())}" } ?: "") + if (st.encrypted && !st.drm) " · AES-128" else "",
@@ -388,7 +432,7 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                         }
                         if (s.decision.askConfirmation) Warning("Rule: this is a large file (${Formatters.bytes(s.info.sizeBytes)}). Confirm to download.")
                         s.duplicate?.let { Warning(it.kind.message + " (${it.existing.fileName})") }
-                        if (s.stream == null && !s.info.rangeSupported && s.info.error == null) Text("The server does not support resuming; SDM will use one connection.", style = MaterialTheme.typography.bodySmall, color = status.warning)
+                        if (s.stream == null && !s.torrent && !s.info.rangeSupported && s.info.error == null) Text("The server does not support resuming; SDM will use one connection.", style = MaterialTheme.typography.bodySmall, color = status.warning)
                         Spacer(Modifier.height(8.dp))
                         OutlinedTextField(s.fileName, { v -> vm.update { it.copy(fileName = v) } }, Modifier.fillMaxWidth(), label = { Text("File name") }, singleLine = true)
                         InfoRow("Source", com.sdm.core.common.Redactor.url(s.info.finalUrl))
@@ -398,8 +442,8 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             vm.grantedFolders().take(3).forEach { f -> FilterChip(s.folder?.treeUri == f.treeUri, { vm.update { it.copy(folder = f) } }, { Text(f.name) }) }
                             FilterChip(false, { folderPicker.launch(null) }, { Text("Choose folder…") })
                         }
-                        Text(if (s.stream != null) "Parallel segments" else "Connections", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        if (!s.torrent) Text(if (s.stream != null) "Parallel segments" else "Connections", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                        if (!s.torrent) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             (if (s.stream != null) listOf(1, 2, 4, 8) else CONNECTION_PROFILES).forEach { n -> FilterChip(s.connections == n, { vm.update { it.copy(connections = n) } }, { Text("$n") }, enabled = s.info.rangeSupported || n == 1) }
                         }
                         s.recommendation?.takeIf { it.sampleCount > 0 }?.let { Text("Suggested: ${it.connections} · ${it.basis}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
@@ -420,8 +464,8 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             FilterChip(s.startPaused, { vm.update { it.copy(startPaused = !it.startPaused, startAt = null) } }, { Text("Add paused") })
                         }
                         OutlinedTextField(s.speedLimitKb, { v -> vm.update { it.copy(speedLimitKb = v.filter(Char::isDigit).take(7)) } }, Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text("Speed limit (KB/s, empty = unlimited)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                        if (s.stream == null) OutlinedTextField(s.checksum, { v -> vm.update { it.copy(checksum = v.trim()) } }, Modifier.fillMaxWidth().padding(top = 4.dp), label = { Text("Expected checksum (optional)") }, singleLine = true)
-                        if (s.stream == null) OutlinedTextField(
+                        if (s.stream == null && !s.torrent) OutlinedTextField(s.checksum, { v -> vm.update { it.copy(checksum = v.trim()) } }, Modifier.fillMaxWidth().padding(top = 4.dp), label = { Text("Expected checksum (optional)") }, singleLine = true)
+                        if (s.stream == null && !s.torrent) OutlinedTextField(
                             s.mirrorsText, { v -> vm.update { it.copy(mirrorsText = v) } }, Modifier.fillMaxWidth().padding(top = 4.dp),
                             label = { Text("Mirror links (optional)") }, supportingText = { Text("One per line. Used in order if this link fails.") }, minLines = 1, maxLines = 4,
                         )

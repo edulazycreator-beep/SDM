@@ -209,7 +209,8 @@ class RemoteFileEngine(
         knownHosts?.let { f -> jsch.hostKeyRepository = TofuHostKeys(f) }
         val s = jsch.getSession(login?.user ?: throw RemoteRefused(ErrorKind.HTTP, "SFTP needs a user name and password", 401), u.host, if (u.port > 0) u.port else 22)
         s.setPassword(login.password)
-        s.setConfig("StrictHostKeyChecking", if (knownHosts != null) "accept-new" else "no")
+        // With the TOFU repository new keys are saved and accepted; a changed key is CHANGED and refused.
+        s.setConfig("StrictHostKeyChecking", if (knownHosts != null) "yes" else "no")
         s.setConfig("PreferredAuthentications", "password,keyboard-interactive")
         s.timeout = readTimeoutMillis
         s.connect(connectTimeoutMillis)
@@ -254,7 +255,8 @@ class TofuHostKeys(private val file: File) : com.jcraft.jsch.HostKeyRepository {
         val k = com.jcraft.jsch.HostKey(host, key)
         val same = read().filter { it.host == host && it.type == k.type }
         return when {
-            same.isEmpty() -> com.jcraft.jsch.HostKeyRepository.NOT_INCLUDED
+            // First contact: remember the key and accept it (trust on first use).
+            same.isEmpty() -> { add(k, null); com.jcraft.jsch.HostKeyRepository.OK }
             same.any { it.key == k.key } -> com.jcraft.jsch.HostKeyRepository.OK
             else -> com.jcraft.jsch.HostKeyRepository.CHANGED
         }

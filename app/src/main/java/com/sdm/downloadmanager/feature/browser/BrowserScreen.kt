@@ -341,6 +341,12 @@ class BrowserViewModel @Inject constructor(
                 view.evaluateJavascript(MEDIA_SCAN_JS) { result -> parseMediaScan(tab.id, result) }
             }
 
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val u = request.url.toString()
+                if (Urls.isMagnet(u)) { onDownloadRequest?.invoke(AddRequest(listOf(u), sourcePage = tab.url)); return true }
+                return false
+            }
+
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 // Ad/tracker hosts get an empty answer (never the page itself, and only when blocking is on).
                 if (!request.isForMainFrame && AdBlocker.ready) {

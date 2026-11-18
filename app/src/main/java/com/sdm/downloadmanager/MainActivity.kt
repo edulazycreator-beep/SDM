@@ -36,6 +36,19 @@ class MainActivity : ComponentActivity() {
         com.sdm.downloadmanager.ui.DeviceLock.onActivityResult(requestCode, resultCode)
     }
 
+    /** The opening app's permission to read a .torrent ends soon, so SDM keeps its own copy. */
+    private fun importTorrentFile(uri: android.net.Uri) {
+        val bytes = runCatching { contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+        if (bytes == null || bytes.size > (32 shl 20)) { android.widget.Toast.makeText(this, "Could not read the torrent file", android.widget.Toast.LENGTH_SHORT).show(); return }
+        val name = runCatching {
+            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
+        }.getOrNull()?.let { com.sdm.core.common.FileNames.sanitize(it) } ?: "download.torrent"
+        val dir = java.io.File(filesDir, "torrent-imports").apply { mkdirs() }
+        val file = java.io.File(dir, "${System.currentTimeMillis()}-" + if (name.endsWith(".torrent", true)) name else "$name.torrent")
+        file.writeBytes(bytes)
+        appViewModel.requestAdd(AddRequest(listOf(android.net.Uri.fromFile(file).toString()), mime = "application/x-bittorrent"))
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
@@ -63,7 +76,11 @@ class MainActivity : ComponentActivity() {
                 val urls = Urls.extract(text)
                 if (urls.isNotEmpty()) appViewModel.requestAdd(AddRequest(urls))
             }
-            Intent.ACTION_VIEW -> intent.dataString?.takeIf { Urls.isValidDownloadUrl(it) }?.let { appViewModel.requestAdd(AddRequest(listOf(it), mime = intent.type)) }
+            Intent.ACTION_VIEW -> {
+                val data = intent.data
+                if (data != null && data.scheme == "content" && (intent.type == "application/x-bittorrent" || data.path?.endsWith(".torrent", true) == true)) importTorrentFile(data)
+                else intent.dataString?.takeIf { Urls.isValidDownloadUrl(it) }?.let { appViewModel.requestAdd(AddRequest(listOf(it), mime = intent.type)) }
+            }
             ACTION_PASTE_LINK -> pendingPaste = true
         }
     }

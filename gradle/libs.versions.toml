@@ -1,4 +1,5 @@
 [versions]
+libtorrent4j = "2.1.0-39"
 commonsNet = "3.11.1"
 jsch = "0.2.24"
 ftpserver = "1.2.0"
@@ -30,6 +31,10 @@ androidxTestRunner = "1.6.2"
 androidxTestExt = "1.2.1"
 
 [libraries]
+libtorrent4j = { module = "org.libtorrent4j:libtorrent4j", version.ref = "libtorrent4j" }
+libtorrent4j-arm64 = { module = "org.libtorrent4j:libtorrent4j-android-arm64", version.ref = "libtorrent4j" }
+libtorrent4j-arm = { module = "org.libtorrent4j:libtorrent4j-android-arm", version.ref = "libtorrent4j" }
+libtorrent4j-x86-64 = { module = "org.libtorrent4j:libtorrent4j-android-x86_64", version.ref = "libtorrent4j" }
 commons-net = { module = "commons-net:commons-net", version.ref = "commonsNet" }
 jsch = { module = "com.github.mwiede:jsch", version.ref = "jsch" }
 ftpserver-core = { module = "org.apache.ftpserver:ftpserver-core", version.ref = "ftpserver" }

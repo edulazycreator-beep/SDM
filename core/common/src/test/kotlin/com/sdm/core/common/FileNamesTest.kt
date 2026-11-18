@@ -31,6 +31,10 @@ class FileNamesTest {
         assertTrue(Urls.isValidDownloadUrl("ftp://example.com/a") && Urls.isValidDownloadUrl("sftp://u@h.example/x.zip"))
         assertFalse(Urls.isValidDownloadUrl("file:///etc/passwd") || Urls.isValidDownloadUrl("sftps://h/x"))
         assertEquals(listOf("https://a.example/x", "ftp://b.example/y.iso"), Urls.extract("see https://a.example/x and ftp://b.example/y.iso"))
+        val magnet = "magnet:?xt=urn:btih:c12fe1c06bba254a9dc9f519b335aa7c1367a88a&dn=Ubuntu+24.04+ISO&tr=udp%3A%2F%2Ftracker.example%3A80"
+        assertEquals(listOf(magnet), Urls.extract("get it: $magnet"))
+        assertTrue(Urls.isMagnet(magnet) && !Urls.isMagnet("magnet:?dn=nothing"))
+        assertEquals("Ubuntu 24.04 ISO", Urls.magnetName(magnet))
         assertFalse(Urls.isValidHttpUrl("javascript:alert(1)"))
         assertEquals(listOf("https://a.com/x.zip", "http://b.org/y"), Urls.extract("get https://a.com/x.zip, then http://b.org/y. https://a.com/x.zip"))
     }

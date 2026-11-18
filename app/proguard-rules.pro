@@ -23,3 +23,7 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.newsclub.net.unix.**
 -dontwarn com.sun.jna.**
+
+# libtorrent4j (JNI): native code calls back into these classes.
+-keep class org.libtorrent4j.swig.libtorrent_jni { *; }
+-keep class org.libtorrent4j.swig.** { *; }

@@ -80,6 +80,7 @@ import kotlin.random.Random
 const val STREAM_HLS = "HLS"
 const val STREAM_DASH = "DASH"
 val STREAM_TYPES = setOf(STREAM_HLS, STREAM_DASH)
+const val STREAM_TORRENT = "TORRENT"
 private const val TRACK_DONE = -2L
 
 /** Why a running transfer was stopped; decides the state it lands in. */
@@ -95,6 +96,7 @@ class DownloadCoordinator @Inject constructor(
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: android.content.Context,
     private val hls: com.sdm.engine.hls.HlsDownloader,
     private val remoteFiles: com.sdm.engine.remote.RemoteFileEngine,
+    private val torrents: dagger.Lazy<com.sdm.core.data.torrent.TorrentEngine>,
     private val archives: dagger.Lazy<com.sdm.core.data.archive.ArchiveExtractor>,
     private val db: SdmDatabase,
     private val engine: DownloadEngine,
@@ -261,6 +263,7 @@ class DownloadCoordinator @Inject constructor(
     private suspend fun runDownload(id: Long) {
         var entity = dao.get(id) ?: return
         val run = running[id] ?: return
+        if (entity.streamType == STREAM_TORRENT) { runTorrent(id, entity, run); return }
         if (entity.streamType in STREAM_TYPES) { runStream(id, entity, run); return }
         val sink = try {
             entity = ensureOutput(entity)
@@ -578,6 +581,88 @@ class DownloadCoordinator @Inject constructor(
         }
     }
 
+
+    // ------------------------------------------------------------------ torrents
+
+    private suspend fun runTorrent(id: Long, start: DownloadEntity, run: Running) {
+        val headers = if (start.hasSecrets) secrets.get(id) else emptyMap()
+        val pending = java.util.concurrent.CopyOnWriteArrayList<Job>()
+        var lastSampleAt = System.currentTimeMillis(); var lastSampleBytes = -1L
+        val listener = object : com.sdm.core.data.torrent.TorrentListener {
+            override fun onMetadata(name: String, totalBytes: Long, files: Int) {
+                pending += scope.launch {
+                    dao.get(id)?.let { e ->
+                        val label = com.sdm.core.common.FileNames.sanitize(name).ifBlank { e.fileName }
+                        dao.updatePreservingState(e.copy(fileName = label, totalBytes = totalBytes, startedAt = e.startedAt ?: now(), rangeSupport = RangeSupport.SUPPORTED,
+                            streamLabel = "$files file(s)", updatedAt = now()))
+                    }
+                    if (transition(id, DownloadEvent.PROBED) == DownloadState.DOWNLOADING) event(id, EventType.STARTED, "Torrent \"$name\": $files file(s), ${com.sdm.core.common.Formatters.bytes(totalBytes)}")
+                }
+            }
+            override fun onProgress(doneBytes: Long, totalBytes: Long, downloadBps: Long, peers: Int, seeds: Int) {
+                val lp = LiveProgress(doneBytes, totalBytes.takeIf { it > 0 }, downloadBps, peers, emptyList())
+                _live.update { it + (id to lp) }
+                scope.launch {
+                    dao.updateProgress(id, doneBytes, totalBytes.takeIf { it > 0 }, peers, now())
+                    val e = dao.get(id) ?: return@launch
+                    if (settings.perDownloadNotifications) notifier.progress(e.toDomain(), lp)
+                    val t = System.currentTimeMillis()
+                    if (lastSampleBytes < 0) { lastSampleBytes = doneBytes; lastSampleAt = t }
+                    else if (t - lastSampleAt >= 5_000) { analytics.sample(id, e.originalUrl, doneBytes - lastSampleBytes, t - lastSampleAt, peers.coerceAtLeast(1)); lastSampleBytes = doneBytes; lastSampleAt = t }
+                }
+            }
+        }
+        val result = try {
+            torrents.get().run(id, start.originalUrl, headers, start.speedLimitBps.takeIf { it > 0 } ?: settings.globalLimitBps, listener)
+        } catch (e: CancellationException) {
+            withContext(NonCancellable) { pending.forEach { it.join() }; onStopped(id, run.stopReason ?: StopReason.LEASE_REVOKED) }
+            throw e
+        }
+        withContext(NonCancellable) {
+            pending.forEach { it.join() }
+            when (result) {
+                is TransferResult.Failed -> onFailed(id, result)
+                is TransferResult.Completed -> finishTorrent(id, result.stats)
+            }
+        }
+    }
+
+    /** Copies the finished torrent into the destination (a folder named after it when it has several files). */
+    private suspend fun finishTorrent(id: Long, stats: com.sdm.engine.TransferStats) {
+        if (dao.get(id)?.state == DownloadState.PREPARING) transition(id, DownloadEvent.PROBED)
+        transition(id, DownloadEvent.VERIFY)
+        val e = dao.get(id) ?: return
+        val engine = torrents.get()
+        val files = engine.finishedFiles(id)
+        if (files.isEmpty()) { fail(e, ErrorCode.STORAGE_ERROR, "The torrent finished but no files were found", null); return }
+        var first: Pair<String, String>? = null
+        var total = 0L
+        val copied = runCatching {
+            for ((file, rel) in files) {
+                val parts = rel.replace('\\', '/').split('/')
+                val sub = parts.dropLast(1).joinToString("/").ifBlank { null }
+                val category = com.sdm.core.common.FileCategory.of(file.name)
+                val (uri, display) = outputs.writeNew(file.name, null, if (files.size == 1) category else e.category, e.destinationType, e.destinationTreeUri, sub) { out ->
+                    file.inputStream().use { it.copyTo(out, 256 * 1024) }
+                }
+                if (first == null) first = uri to display
+                total += file.length()
+                db.files().upsert(listOf(FileIndexEntity(uri, display, file.length(), com.sdm.core.common.MimeTypes.forName(display), category, now(), "SDM/" + (sub ?: ""), id, null, null, e.destinationTreeUri)))
+            }
+        }
+        copied.onFailure { ex -> fail(e, ErrorCode.STORAGE_ERROR, ex.message, null); return }
+        val (uri, display) = first!!
+        val done = e.copy(destinationUri = uri, fileName = if (files.size == 1) display else e.fileName, totalBytes = total, downloadedBytes = total,
+            completedAt = now(), updatedAt = now(), activeMillis = e.activeMillis + stats.activeMillis, errorCode = null, errorMessage = null, activeConnections = 0, connectionsUsed = stats.connectionsUsed)
+        dao.updatePreservingState(done)
+        if (transition(id, DownloadEvent.VERIFIED) == DownloadState.COMPLETED) {
+            engine.deleteWork(id)
+            event(id, EventType.COMPLETED, "Torrent complete: ${files.size} file(s), ${com.sdm.core.common.Formatters.bytes(total)}")
+            analytics.session(done, stats, succeeded = true)
+            notifier.completed(done.toDomain(), uri)
+        }
+    }
+
     // ------------------------------------------------------------------ outcomes
 
     private suspend fun onCompleted(id: Long, r: TransferResult.Completed) {
@@ -771,6 +856,7 @@ class DownloadCoordinator @Inject constructor(
         if (transition(id, DownloadEvent.CANCEL) != null) {
             if (deletePartial && d.state != DownloadState.COMPLETED) {
                 deleteStreamFiles(id)
+                if (d.streamType == STREAM_TORRENT) torrents.get().deleteWork(id)
                 d.destinationUri?.let { outputs.delete(it) }
                 db.segments().clear(id)
                 dao.updatePreservingState(dao.get(id)!!.copy(destinationUri = null, downloadedBytes = 0, updatedAt = now()))
@@ -786,6 +872,7 @@ class DownloadCoordinator @Inject constructor(
         if (d.state.isActive || d.state == DownloadState.QUEUED || d.state == DownloadState.WAITING_FOR_NETWORK) transition(id, DownloadEvent.PAUSE)
         if (d.state != DownloadState.COMPLETED) d.destinationUri?.let { outputs.delete(it) }
         deleteStreamFiles(id)
+        if (d.streamType == STREAM_TORRENT) torrents.get().deleteWork(id)
         db.segments().clear(id)
         val fresh = dao.get(id) ?: return
         dao.updatePreservingState(fresh.copy(
@@ -803,6 +890,7 @@ class DownloadCoordinator @Inject constructor(
             val d = dao.get(id) ?: continue
             if (deleteFiles || d.state != DownloadState.COMPLETED) d.destinationUri?.let { outputs.delete(it); db.files().delete(listOf(it)) }
             deleteStreamFiles(id)
+            if (d.streamType == STREAM_TORRENT) torrents.get().deleteWork(id)
             notifier.cancel(id)
         }
         dao.delete(ids.toList())
