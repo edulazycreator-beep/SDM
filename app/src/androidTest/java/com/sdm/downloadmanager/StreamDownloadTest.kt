@@ -5,7 +5,10 @@ import android.media.MediaExtractor
 import android.media.MediaFormat
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
@@ -42,14 +45,15 @@ class StreamDownloadTest {
         rule.onNode(hasSetTextAction()).performTextInput(URL)
         rule.onAllNodesWithText("Next").onFirst().performClick()
         rule.waitUntil(30_000) { exists("HLS video stream") }
-        assertTrue("quality option listed", exists("180p"))
+        assertTrue("quality option listed; dialog shows: ${screenText()}", exists("180p"))
         val confirm = listOf("Download anyway", "Confirm download", "Download").first { label ->
             rule.onAllNodesWithText(label, substring = false).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onAllNodesWithText(confirm, substring = false).onFirst().performClick()
 
         var uri: Uri? = null
-        rule.waitUntil(180_000) { uri = findOutput(); uri != null }
+        runCatching { rule.waitUntil(180_000) { uri = findOutput(); uri != null } }
+            .onFailure { throw AssertionError("no MP4 after 3 min; screen shows: ${screenText()}", it) }
         val output = uri ?: error("stream output not found")
         val ex = MediaExtractor()
         try {
@@ -65,6 +69,10 @@ class StreamDownloadTest {
             ex.release()
         }
     }
+
+    private fun screenText(): String =
+        rule.onAllNodes(hasText("", substring = true), useUnmergedTree = true).fetchSemanticsNodes()
+            .flatMap { n -> n.config.getOrNull(SemanticsProperties.Text).orEmpty().map { it.text } }.joinToString(" | ")
 
     /** The finished, non-pending MP4 (MediaStore hides pending items). */
     private fun findOutput(): Uri? {

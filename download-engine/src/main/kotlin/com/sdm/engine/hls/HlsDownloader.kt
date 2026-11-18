@@ -73,11 +73,12 @@ class HlsDownloader(private val clientProvider: () -> OkHttpClient, val globalLi
     /** [credentialsFor] is the URL the caller's cookies/authorization belong to (see [scopedHeaders]). */
     suspend fun fetchText(url: String, headers: Map<String, String>, credentialsFor: String = url): Pair<String, String> {
         val req = Request.Builder().url(url).engineDefaults(scopedHeaders(headers, credentialsFor, url)).build()
-        return client().newCall(req).await().use { r ->
+        // Reading the body blocks; callers may be on the main thread (Android forbids network there).
+        return withContext(Dispatchers.IO) { client().newCall(req).await() }.use { r ->
             if (!r.isSuccessful) throw HttpStatusException(r.code, RetryAfter.parse(r.header("Retry-After")))
             val body = r.body
             if (body.contentLength() > 8L shl 20) throw IOException("Playlist too large")
-            body.string() to r.request.url.toString()
+            withContext(Dispatchers.IO) { body.string() } to r.request.url.toString()
         }
     }
 
