@@ -24,7 +24,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayCircle
-import androidx.compose.material3.Icon
+import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.ui.graphics.Color
 import com.sdm.core.common.FileCategory
 import com.sdm.core.designsystem.component.CategoryBadge

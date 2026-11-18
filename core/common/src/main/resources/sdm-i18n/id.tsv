@@ -1,0 +1,764 @@
+# English -> Indonesian (Bahasa Indonesia). {} marks a value inserted by the app.
+# Format: english<TAB>indonesian; \n is a line break.
+ (low)	 (rendah)
+ from {}	 dari {}
+ · next start {}	 · mulai berikutnya {}
+ · no internet verified	 · internet belum terverifikasi
+ · tap for details	 · ketuk untuk detail
+ · unstable	 · tidak stabil
+ · {} blocked	 · {} diblokir
+ · {} left	 · sisa {}
+ · {} left (estimate)	 · sisa {} (perkiraan)
+ · {} skipped	 · {} dilewati
+"{}" moves into SDM's private folder: it disappears from Downloads, the gallery and other apps, and opens only after unlocking.	"{}" dipindahkan ke folder privat SDM: file hilang dari Unduhan, galeri, dan aplikasi lain, dan hanya bisa dibuka setelah membuka kunci.
+, rejected {} invalid line(s)	, {} baris tidak valid ditolak
+, skipped {} already in SDM	, {} dilewati karena sudah ada di SDM
+, skipped {} duplicate(s)	, {} duplikat dilewati
+30 days	30 hari
+7 days	7 hari
+: best median speed with {} connection(s)	: kecepatan median terbaik dengan {} koneksi
+; reduced because {}% of segments failed or the server throttled	; dikurangi karena {}% segmen gagal atau server membatasi
+A download fails	Unduhan gagal
+A file with identical content (same checksum) exists.	Ada file dengan isi identik (checksum sama).
+A file with the same name and size exists; it is probably the same file.	Ada file dengan nama dan ukuran yang sama; kemungkinan file yang sama.
+A file with the same name exists. It may be a different file.	Ada file dengan nama yang sama. Mungkin file yang berbeda.
+AMOLED black	Hitam AMOLED
+APKs to Applications	APK ke Aplikasi
+About SDM	Tentang SDM
+Accent color	Warna aksen
+Access denied	Akses ditolak
+Actions	Tindakan
+Actions for {}	Tindakan untuk {}
+Active	Aktif
+Active downloads	Unduhan aktif
+Active time	Waktu aktif
+Add	Tambah
+Add download	Tambah unduhan
+Add folder	Tambah folder
+Add folder…	Tambah folder…
+Add imported downloads paused	Tambahkan unduhan hasil impor dalam keadaan dijeda
+Add multiple URLs	Tambah banyak URL
+Add paused	Tambah dalam keadaan dijeda
+Add rule	Tambah aturan
+Add {} downloads	Tambah {} unduhan
+Added torrent {}	Torrent {} ditambahkan
+Added {}	{} ditambahkan
+Added {} download(s)	{} unduhan ditambahkan
+Address	Alamat
+All	Semua
+All ({})	Semua ({})
+All files	Semua file
+Allow exact alarms	Izinkan alarm tepat waktu
+Allow notifications	Izinkan notifikasi
+Allow pop-ups	Izinkan pop-up
+Also delete completed files from storage	Hapus juga file yang sudah selesai dari penyimpanan
+Also delete the file	Hapus juga filenya
+An unexpected error occurred.	Terjadi galat tak terduga.
+Analytics	Analitik
+Analytics and Speed Intelligence	Analitik dan Speed Intelligence
+Android has not granted exact alarms to SDM, so scheduled starts happen in Android's next maintenance window (usually within minutes).	Android belum memberi izin alarm tepat waktu ke SDM, jadi unduhan terjadwal dimulai pada jendela pemeliharaan Android berikutnya (biasanya dalam beberapa menit).
+Android limits background work to save battery. SDM uses the system's long-running download jobs, so transfers keep going when you switch apps. If your phone stops them, open SDM and they continue from where they stopped.	Android membatasi kerja di latar belakang untuk menghemat baterai. SDM memakai tugas unduhan jangka panjang dari sistem, jadi unduhan tetap berjalan saat kamu pindah aplikasi. Jika HP menghentikannya, buka SDM dan unduhan berlanjut dari titik terakhir.
+Android stopped background work for SDM (time limit or battery saving).	Android menghentikan kerja latar belakang SDM (batas waktu atau penghematan baterai).
+Animations	Animasi
+Any network	Jaringan apa saja
+Any size	Semua ukuran
+Any status	Semua status
+Any time	Kapan saja
+Anytime	Kapan saja
+App info and permissions	Info aplikasi dan izin
+Appearance	Tampilan
+Applications	Aplikasi
+Applies to all downloads together. Each download can also have its own limit in its details.	Berlaku untuk semua unduhan sekaligus. Tiap unduhan juga bisa punya batas sendiri di detailnya.
+Archives	Arsip
+Ask confirmation	Minta konfirmasi
+Ask for confirmation	Minta konfirmasi
+At 	Pada 
+At a time…	Pada waktu…
+Audio only (.m4a)	Audio saja (.m4a)
+Automatic actions for files and network changes	Tindakan otomatis untuk file dan perubahan jaringan
+Automatic retries: {}	Coba ulang otomatis: {}
+Automation	Otomatisasi
+Available storage	Penyimpanan tersedia
+Average	Rata-rata
+Average duration	Durasi rata-rata
+Average speed	Kecepatan rata-rata
+Back	Kembali
+Back up settings	Cadangkan setelan
+Background mode	Mode latar belakang
+Backup	Cadangan
+Balanced	Seimbang
+Bar chart	Grafik batang
+Based on {} download(s)	Berdasarkan {} unduhan
+Batch rename	Ganti nama massal
+Battery below	Baterai di bawah
+Battery below {}%	Baterai di bawah {}%
+Battery below {}% (not charging)	Baterai di bawah {}% (tidak mengisi daya)
+Battery optimization settings	Setelan optimasi baterai
+BitTorrent: details and files come from other peers, so the size appears once the torrent is found. While downloading, SDM also uploads pieces to others, as the protocol requires; it stops when the download finishes. Only download content you have the right to.	BitTorrent: detail dan file berasal dari peer lain, jadi ukurannya muncul setelah torrent ditemukan. Selama mengunduh, SDM juga mengunggah potongan ke peer lain sesuai cara kerja protokolnya, dan berhenti saat unduhan selesai. Unduh hanya konten yang berhak kamu unduh.
+Block ads and trackers	Blokir iklan dan pelacak
+Blocked	Diblokir
+Blocked a pop-up. Allow pop-ups for this site in Site settings.	Pop-up diblokir. Izinkan pop-up untuk situs ini di Setelan situs.
+Bookmarks	Bookmark
+Browser menu	Menu browser
+By category	Per kategori
+CSV for spreadsheets	CSV untuk spreadsheet
+Cancel	Batal
+Cancelled	Dibatalkan
+Category	Kategori
+Change destination folder	Ubah folder tujuan
+Check Wi-Fi or mobile data. SDM resumes automatically when the network returns.	Periksa Wi-Fi atau data seluler. SDM melanjutkan otomatis saat jaringan kembali.
+Check that the destination folder still exists and SDM still has access.	Pastikan folder tujuan masih ada dan SDM masih punya akses.
+Check the address, proxy and DNS settings, then retry.	Periksa alamat, setelan proxy dan DNS, lalu coba lagi.
+Check the link or find a new one on the source page.	Periksa link-nya atau cari yang baru di halaman sumber.
+Checking file contents…	Memeriksa isi file…
+Checking link	Memeriksa link
+Checks the clipboard only when SDM is open	Memeriksa papan klip hanya saat SDM dibuka
+Checksum does NOT match: {}	Checksum TIDAK cocok: {}
+Checksum matches ({})	Checksum cocok ({})
+Checksum mismatch	Checksum tidak cocok
+Choose folder…	Pilih folder…
+Choose internal storage or an exFAT-formatted card.	Pilih penyimpanan internal atau kartu berformat exFAT.
+Clear	Hapus
+Clear analytics	Hapus analitik
+Clear analytics?	Hapus analitik?
+Clear cookies and cache	Hapus cookie dan cache
+Clear dates	Hapus tanggal
+Clear history	Hapus riwayat
+Clear history?	Hapus riwayat?
+Close	Tutup
+Close find	Tutup pencarian
+Close tab	Tutup tab
+Code	Kode
+Comfortable	Lega
+Compact	Ringkas
+Completed	Selesai
+Completed downloads	Unduhan selesai
+Completed downloads appear here. Add folders under ⋮ › Folders to manage other files.	Unduhan yang selesai muncul di sini. Tambahkan folder lewat ⋮ › Folder untuk mengelola file lain.
+Compute checksum of the file	Hitung checksum file
+Computing…	Menghitung…
+Conditions	Kondisi
+Confirm download	Konfirmasi unduhan
+Confirm files over 1 GB	Konfirmasi file di atas 1 GB
+Connect the phone to Wi-Fi (the same network as the computer).	Sambungkan HP ke Wi-Fi (jaringan yang sama dengan komputer).
+Connect to Wi-Fi first.	Sambungkan ke Wi-Fi dulu.
+Connected to Wi-Fi	Terhubung ke Wi-Fi
+Connected to mobile data	Terhubung ke data seluler
+Connection	Koneksi
+Connection failed	Koneksi gagal
+Connection timeout: {}s	Batas waktu koneksi: {} dtk
+Connections	Koneksi
+Connections (1-16)	Koneksi (1-16)
+Conservative	Hemat
+Continue	Lanjutkan
+Cookies, cache and site data cleared	Cookie, cache, dan data situs dihapus
+Copied	Disalin
+Copied link: {}	Link disalin: {}
+Copy checksum	Salin checksum
+Copy diagnostic report	Salin laporan diagnostik
+Could not create folder	Tidak dapat membuat folder
+Could not extract	Tidak dapat mengekstrak
+Could not move the file	Tidak dapat memindahkan file
+Could not open the local page on this network.	Tidak dapat membuka halaman lokal di jaringan ini.
+Could not read the file: {}	Tidak dapat membaca file: {}
+Could not read the stream: {}	Tidak dapat membaca stream: {}
+Could not read the torrent file	Tidak dapat membaca file torrent
+Could not read this stream: {}	Tidak dapat membaca stream ini: {}
+Could not rename	Tidak dapat mengganti nama
+Could not rename (pause first)	Tidak dapat mengganti nama (jeda dulu)
+Could not save this file: {}	Tidak dapat menyimpan file ini: {}
+Could not save: {}	Tidak dapat menyimpan: {}
+Counts every finished or failed transfer session.	Menghitung setiap sesi transfer yang selesai atau gagal.
+Create folder in {}	Buat folder di {}
+Created	Dibuat
+Current	Saat ini
+Custom limit (KB/s)	Batas khusus (KB/s)
+Custom rules	Aturan khusus
+DNS over HTTPS applies to downloads (not the browser) and is skipped while a proxy is set.	DNS over HTTPS berlaku untuk unduhan (bukan browser) dan dilewati selama proxy diatur.
+Daily activity, last 14 days	Aktivitas harian, 14 hari terakhir
+Daily downloaded bytes	Byte terunduh per hari
+Dark	Gelap
+Dashboard widgets	Widget dasbor
+Database	Basis data
+Date	Tanggal
+Days	Hari
+Default SDM user agent	User agent bawaan SDM
+Default connections per download	Koneksi bawaan per unduhan
+Default folder	Folder bawaan
+Delete	Hapus
+Delete download?	Hapus unduhan?
+Delete entry	Hapus entri
+Delete selected	Hapus yang dipilih
+Delete {} download(s)?	Hapus {} unduhan?
+Delete {} file(s)?	Hapus {} file?
+Delete {}?	Hapus {}?
+Deleted {} file(s)	{} file dihapus
+Deletes measured transfer results used for recommendations.	Menghapus hasil transfer terukur yang dipakai untuk rekomendasi.
+Deletes statistics and speed history. Download list and Speed Intelligence data stay.	Menghapus statistik dan riwayat kecepatan. Daftar unduhan dan data Speed Intelligence tetap ada.
+Deletes {} partial file(s) that no download uses.	Menghapus {} file setengah jadi yang tidak dipakai unduhan mana pun.
+Desktop site	Situs desktop
+Destination	Tujuan
+Destination can only change before the download starts	Tujuan hanya bisa diubah sebelum unduhan dimulai
+Destination changed	Tujuan diubah
+Details	Detail
+Details and checksum	Detail dan checksum
+Detect copied links	Deteksi link yang disalin
+Detected media ({})	Media terdeteksi ({})
+Device	Perangkat
+Device free memory	Memori kosong perangkat
+Device storage	Penyimpanan perangkat
+Diagnostics	Diagnostik
+Documents	Dokumen
+Download	Unduh
+Download Smarter. Faster. Better.	Unduh Lebih Cerdas. Lebih Cepat. Lebih Baik.
+Download Smarter. Faster. Better.\n\nSDM splits large files into parts and downloads them in parallel when the server allows it, pauses and resumes safely, and checks every file before calling it complete.	Unduh Lebih Cerdas. Lebih Cepat. Lebih Baik.\n\nSDM membagi file besar menjadi beberapa bagian dan mengunduhnya bersamaan jika server mengizinkan, menjeda dan melanjutkan dengan aman, serta memeriksa setiap file sebelum menyatakannya selesai.
+Download again	Unduh lagi
+Download all	Unduh semua
+Download anyway	Tetap unduh
+Download complete	Unduhan selesai
+Download details	Detail unduhan
+Download fails	Unduhan gagal
+Download file	Unduh file
+Download files on this page	Unduh file di halaman ini
+Download it from the site itself.	Unduh dari situsnya langsung.
+Download problems	Masalah unduhan
+Download queue	Antrean unduhan
+Download speed, last 24 hours	Kecepatan unduh, 24 jam terakhir
+Download the torrent's files	Unduh file dari torrent
+Download this video	Unduh video ini
+Download {}	Unduh {}
+Download {} file(s)	Unduh {} file
+Downloading	Mengunduh
+Downloading 1 file	Mengunduh 1 file
+Downloading {} files	Mengunduh {} file
+Downloads	Unduhan
+Downloads ({})	Unduhan ({})
+Downloads may run now (subject to network and battery conditions).	Unduhan boleh berjalan sekarang (tergantung kondisi jaringan dan baterai).
+Downloads you start here carry this site's cookies, so signed-in downloads work.	Unduhan yang dimulai di sini membawa cookie situs ini, jadi unduhan yang perlu login tetap berjalan.
+Drag to reorder	Seret untuk mengubah urutan
+Duplicates	Duplikat
+Dynamic color	Warna dinamis
+Edit link (refresh)	Ubah link (perbarui)
+Edit rule	Ubah aturan
+End	Selesai
+End / pause time	Waktu selesai / jeda
+Enter a valid link (http, https, FTP or SFTP)	Masukkan link yang valid (http, https, FTP, atau SFTP)
+Error: {}	Galat: {}
+Errors, reports and performance	Galat, laporan, dan performa
+Estimate available once downloads are running	Perkiraan tersedia setelah unduhan berjalan
+Estimate unavailable: some file sizes are unknown	Perkiraan tidak tersedia: beberapa ukuran file tidak diketahui
+Estimated completion: {} (estimate from current measured speed)	Perkiraan selesai: {} (perkiraan dari kecepatan terukur saat ini)
+Exact alarms are allowed.	Alarm tepat waktu diizinkan.
+Exit fullscreen	Keluar dari layar penuh
+Exit reader view	Keluar dari mode baca
+Expected checksum	Checksum yang diharapkan
+Expected checksum (optional)	Checksum yang diharapkan (opsional)
+Export	Ekspor
+Export download list	Ekspor daftar unduhan
+Export history	Ekspor riwayat
+Exported {} download(s)	{} unduhan diekspor
+Exported {} row(s)	{} baris diekspor
+Exports never include cookies, sign-in headers or tokens in links.	Ekspor tidak pernah menyertakan cookie, header login, atau token di link.
+Extension (e.g. zip)	Ekstensi (mis. zip)
+Extension is	Ekstensinya
+Extensions, e.g. apk, zip	Ekstensi, mis. apk, zip
+Extract ZIP files automatically	Ekstrak file ZIP otomatis
+Extract here	Ekstrak di sini
+Extracted {} file(s) into folder "{}"	{} file diekstrak ke folder "{}"
+Extracting…	Mengekstrak…
+Failed	Gagal
+Failed downloads	Unduhan gagal
+Failed: {}	Gagal: {}
+Fast	Cepat
+Faster pages and fewer ad videos in the media list. Can be turned off per site.	Halaman lebih cepat dan lebih sedikit video iklan di daftar media. Bisa dimatikan per situs.
+File actions	Tindakan file
+File changed on server	File di server berubah
+File extension is {}	Ekstensi file {}
+File is larger than 50 MB	File lebih besar dari 50 MB
+File name	Nama file
+File name, link, page title…	Nama file, link, judul halaman…
+File not found	File tidak ditemukan
+File size above	Ukuran file di atas
+File size exceeds {}	Ukuran file melebihi {}
+File too large for destination	File terlalu besar untuk tujuan
+File type is	Jenis filenya
+File type is {}	Jenis file {}
+Files	File
+Files ({})	File ({})
+Files are removed from storage. This cannot be undone.	File dihapus dari penyimpanan. Tindakan ini tidak bisa dibatalkan.
+Files here are only visible in SDM and are not backed up.	File di sini hanya terlihat di SDM dan tidak ikut dicadangkan.
+Files on this page	File di halaman ini
+Fill in the values above.	Isi nilai di atas.
+Find duplicates	Cari duplikat
+Find in page	Cari di halaman
+Folder created	Folder dibuat
+Folders	Folder
+Folders and access	Folder dan akses
+Forward	Maju
+Free some space or choose another destination, then resume.	Kosongkan ruang atau pilih tujuan lain, lalu lanjutkan.
+Free storage below {}	Ruang kosong di bawah {}
+Fri	Jum
+General	Umum
+Get started	Mulai
+HTTP handling	Penanganan HTTP
+Haptic feedback	Getaran umpan balik
+Higher priority	Prioritas lebih tinggi
+History	Riwayat
+Home	Beranda
+Host is	Host-nya
+Host, e.g. example.com	Host, mis. example.com
+IF {}\nTHEN {}	JIKA {}\nMAKA {}
+Images	Gambar
+Import	Impor
+Import links	Impor link
+Import, export and backup	Impor, ekspor, dan cadangan
+Important	Penting
+Imported links are checked when they start; they may have expired	Link hasil impor diperiksa saat dimulai; mungkin sudah kedaluwarsa
+Imported {}	{} diimpor
+In Files, open a file's menu and choose "Move to private folder".	Di File, buka menu sebuah file lalu pilih "Pindahkan ke folder privat".
+Include web pages and links without a file type	Sertakan halaman web dan link tanpa jenis file
+Insights	Wawasan
+Insufficient storage	Penyimpanan tidak cukup
+Integrity	Integritas
+Interrupted download	Unduhan terputus
+Invalid data	Data tidak valid
+Invalid server response	Respons server tidak valid
+JSON that SDM can import again	JSON yang bisa diimpor lagi oleh SDM
+Layout	Tata letak
+Leftover partial files	Sisa file setengah jadi
+Light	Terang
+Limit speed	Batasi kecepatan
+Limit speed to {}	Batasi kecepatan ke {}
+Limits	Batasan
+Line chart	Grafik garis
+Link expired	Link kedaluwarsa
+Link updated; resume to continue	Link diperbarui; lanjutkan untuk meneruskan
+Links are validated now; file details are read when each download starts. Links already in SDM are skipped.	Link diperiksa sekarang; detail file dibaca saat tiap unduhan dimulai. Link yang sudah ada di SDM dilewati.
+Location	Lokasi
+Locked	Terkunci
+Long-press the handle and drag to reorder. Starred downloads always go first.	Tekan lama pegangan lalu seret untuk mengubah urutan. Unduhan berbintang selalu didahulukan.
+Longest wait between retries: {}	Jeda terlama antar percobaan: {}
+Lower priority	Prioritas lebih rendah
+MP4 to Videos	MP4 ke Video
+Managed files	File yang dikelola
+Manual order	Urutan manual
+Manual schedule	Jadwal manual
+Maximum	Maksimum
+Media on this page	Media di halaman ini
+Megabytes	Megabyte
+Memory (app heap)	Memori (heap aplikasi)
+Message	Pesan
+Minimum battery when not charging: {}%	Baterai minimum saat tidak mengisi daya: {}%
+Mirror links (optional)	Link cadangan (opsional)
+Mobile site	Situs seluler
+Modified	Diubah
+Mon	Sen
+Monthly downloaded bytes	Byte terunduh per bulan
+Monthly volume	Volume bulanan
+More	Lainnya
+More actions	Aksi lainnya
+More connections are not always faster. SDM only uses several when the server supports ranges.	Lebih banyak koneksi tidak selalu lebih cepat. SDM hanya memakai beberapa koneksi jika server mendukung range.
+Move	Pindahkan
+Move back to Downloads	Kembalikan ke Unduhan
+Move down	Turunkan
+Move to	Pindahkan ke
+Move to private folder	Pindahkan ke folder privat
+Move to private folder?	Pindahkan ke folder privat?
+Move up	Naikkan
+Moved {} file(s)	{} file dipindahkan
+Moved {} to Downloads/SDM	{} dipindahkan ke Downloads/SDM
+Moved {} to the private folder	{} dipindahkan ke folder privat
+Music	Musik
+Name	Nama
+Native memory	Memori native
+Needs confirmation	Perlu konfirmasi
+Network	Jaringan
+Network selection	Pilihan jaringan
+Network unavailable	Jaringan tidak tersedia
+Network: {}	Jaringan: {}
+New folder	Folder baru
+New folder in {}	Folder baru di {}
+New private tab	Tab privat baru
+New rule	Aturan baru
+New tab	Tab baru
+Newest	Terbaru
+Next	Lanjut
+Night download	Unduh malam
+No active downloads	Tidak ada unduhan aktif
+No app can open this file	Tidak ada aplikasi yang bisa membuka file ini
+No bookmarks	Belum ada bookmark
+No browser installed	Tidak ada browser yang terpasang
+No completed downloads yet.	Belum ada unduhan yang selesai.
+No downloads match "{}".	Tidak ada unduhan yang cocok dengan "{}".
+No downloads yet	Belum ada unduhan
+No downloads yet. Paste a link, or open the browser and play a video.	Belum ada unduhan. Tempel link, atau buka browser dan putar video.
+No duplicate files found. Files are compared by SHA-256 content hash, not by name.	Tidak ada file duplikat. File dibandingkan berdasarkan hash isi SHA-256, bukan nama.
+No failed downloads.	Tidak ada unduhan gagal.
+No files	Belum ada file
+No folders yet. Add one to move files into it.	Belum ada folder. Tambahkan satu untuk memindahkan file ke dalamnya.
+No history	Belum ada riwayat
+No history{}	Belum ada riwayat{}
+No leftover partial files.	Tidak ada sisa file setengah jadi.
+No link in the clipboard	Tidak ada link di papan klip
+No new downloads start while the queue is paused	Tidak ada unduhan baru yang dimulai selama antrean dijeda
+No transfers yet	Belum ada transfer
+Not a valid SDM download list: {}	Bukan daftar unduhan SDM yang valid: {}
+Not checked yet	Belum diperiksa
+Not enough storage	Penyimpanan tidak cukup
+Not on Wi-Fi	Tidak terhubung ke Wi-Fi
+Not set	Belum diatur
+Not set (tap to add)	Belum diatur (ketuk untuk menambah)
+Not set (uses hours above)	Belum diatur (memakai jam di atas)
+Not supported	Tidak didukung
+Nothing detected yet. Start playing the video, then check here again.	Belum ada yang terdeteksi. Putar videonya, lalu cek lagi di sini.
+Nothing here	Tidak ada apa-apa
+Nothing here yet	Belum ada apa-apa
+Nothing is waiting.	Tidak ada yang menunggu.
+Notification per download	Notifikasi per unduhan
+Notifications	Notifikasi
+Notify	Beri tahu
+Notify: {}	Beri tahu: {}
+Now	Sekarang
+Offer to download playing videos	Tawarkan unduh video yang sedang diputar
+Oldest	Terlama
+Oldest first	Terlama dulu
+On Wi-Fi	Saat Wi-Fi
+On a computer connected to the same Wi-Fi, open this address in a browser, paste links and enter the code.	Di komputer yang terhubung ke Wi-Fi yang sama, buka alamat ini di browser, tempel link, lalu masukkan kodenya.
+On mobile data	Saat data seluler
+One per line. Used in order if this link fails.	Satu per baris. Dipakai berurutan jika link ini gagal.
+Only files over 100 MB	Hanya file di atas 100 MB
+Only on unmetered networks	Hanya di jaringan tanpa kuota
+Only while charging	Hanya saat mengisi daya
+Open	Buka
+Open SDM to continue, or exempt SDM from battery optimization.	Buka SDM untuk melanjutkan, atau kecualikan SDM dari optimasi baterai.
+Open browser	Buka browser
+Open in external browser	Buka di browser lain
+Open security settings	Buka setelan keamanan
+Open the private folder	Buka folder privat
+Open the source page again and use Refresh link to keep the downloaded part.	Buka lagi halaman sumbernya dan pakai Perbarui link agar bagian yang sudah terunduh tetap tersimpan.
+Open with	Buka dengan
+Open with…	Buka dengan…
+Operating hours	Jam operasional
+Order	Urutan
+Other	Lainnya
+Outside operating hours	Di luar jam operasional
+Overall speed	Kecepatan total
+Page	Halaman
+Pages you visit (outside private tabs) appear here.	Halaman yang kamu kunjungi (di luar tab privat) muncul di sini.
+Parallel segments	Segmen paralel
+Paste	Tempel
+Paste a link, or open the browser and play a video or tap a download link.	Tempel link, atau buka browser lalu putar video atau ketuk link unduhan.
+Paste link	Tempel link
+Paste links separated by new lines or spaces. Each link is checked before it is added.	Tempel link yang dipisah baris baru atau spasi. Tiap link diperiksa sebelum ditambahkan.
+Pause	Jeda
+Pause all	Jeda semua
+Pause at	Jeda pada
+Pause downloads	Jeda unduhan
+Pause on low battery	Jeda saat baterai lemah
+Pause on mobile data	Jeda saat data seluler
+Pause or resume	Jeda atau lanjutkan
+Pause queue	Jeda antrean
+Pause selected	Jeda yang dipilih
+Pause the download first, and use a valid link	Jeda unduhan dulu, dan pakai link yang valid
+Paused	Dijeda
+Paused by rule	Dijeda oleh aturan
+Percent	Persen
+Performance (updates every 2 s)	Performa (diperbarui tiap 2 dtk)
+Picture in picture	Gambar dalam gambar
+Play	Putar
+Pop-ups open as new tabs	Pop-up dibuka sebagai tab baru
+Preparing	Menyiapkan
+Priority	Prioritas
+Priority first	Prioritas dulu
+Privacy	Privasi
+Private	Privat
+Private folder	Folder privat
+Private tabs need a newer Android System WebView. Update it from the Play Store.	Tab privat memerlukan Android System WebView yang lebih baru. Perbarui dari Play Store.
+Profile	Profil
+Profiles, operating hours and conditions	Profil, jam operasional, dan kondisi
+Progress	Progres
+Progress, speed and remaining time	Progres, kecepatan, dan sisa waktu
+Progress, speed and remaining time with pause and cancel buttons	Progres, kecepatan, dan sisa waktu dengan tombol jeda dan batal
+Proxy host	Host proxy
+Quality	Kualitas
+Queue	Antrean
+Queue status	Status antrean
+Queued	Antre
+Quick actions	Aksi cepat
+Quick start	Mulai cepat
+Range not satisfiable	Range tidak bisa dipenuhi
+Range not supported	Range tidak didukung
+Read timeout: {}s	Batas waktu baca: {} dtk
+Reader view	Mode baca
+Reading file name, size and type…	Membaca nama, ukuran, dan jenis file…
+Reading stream…	Membaca stream…
+Recent activity	Aktivitas terbaru
+Recent problems	Masalah terbaru
+Recommendations appear after downloads finish.	Rekomendasi muncul setelah unduhan selesai.
+Refresh	Muat ulang
+Reliability	Keandalan
+Reminders and rules	Pengingat dan aturan
+Remove	Hapus
+Remove access	Cabut akses
+Remove bookmark	Hapus bookmark
+Remove completed from list	Hapus yang selesai dari daftar
+Remove leftover files?	Hapus sisa file?
+Remove leftover files…	Hapus sisa file…
+Removed {}	{} dihapus
+Removes all browsing history.	Menghapus semua riwayat penjelajahan.
+Removes it from SDM.	Menghapusnya dari SDM.
+Removes them from SDM. Unfinished parts are always deleted.	Menghapusnya dari SDM. Bagian yang belum selesai selalu dihapus.
+Rename	Ganti nama
+Rename new file	Ganti nama file baru
+Renamed	Nama diganti
+Renamed {} file(s)	Nama {} file diganti
+Replace existing	Ganti yang ada
+Replaces current settings and rules	Mengganti setelan dan aturan saat ini
+Reports never contain cookies, passwords or authorization headers.	Laporan tidak pernah berisi cookie, sandi, atau header otorisasi.
+Requires Android 12	Memerlukan Android 12
+Reset to defaults	Kembalikan ke bawaan
+Resolved	Tujuan akhir
+Restart	Mulai ulang
+Restart from the beginning	Mulai ulang dari awal
+Restart the download from the beginning.	Mulai ulang unduhan dari awal.
+Restart the download to get the new version.	Mulai ulang unduhan untuk mendapatkan versi baru.
+Restart the download; if it repeats, the source file differs from the published checksum.	Mulai ulang unduhan; jika terus terjadi, file sumber berbeda dari checksum yang dipublikasikan.
+Restore settings	Pulihkan setelan
+Restored settings and {} rule(s)	Setelan dan {} aturan dipulihkan
+Resume	Lanjutkan
+Resume all	Lanjutkan semua
+Resume downloads	Lanjutkan unduhan
+Resume interrupted downloads on start	Lanjutkan unduhan yang terputus saat aplikasi dibuka
+Resume it; SDM keeps the verified part.	Lanjutkan; SDM mempertahankan bagian yang sudah terverifikasi.
+Resume on Wi-Fi	Lanjutkan saat Wi-Fi
+Resume queued downloads	Lanjutkan unduhan yang antre
+Resume selected	Lanjutkan yang dipilih
+Resume support	Dukungan lanjutan
+Retries	Percobaan ulang
+Retries: {} · open for the full report and copy button	Percobaan: {} · buka untuk laporan lengkap dan tombol salin
+Retry	Coba lagi
+Retry failed downloads	Coba ulang unduhan yang gagal
+Retry with policy	Coba ulang sesuai kebijakan
+Retry with the retry policy	Coba ulang sesuai kebijakan coba ulang
+Retry. If it persists, copy the diagnostic report.	Coba lagi. Jika terus terjadi, salin laporan diagnostiknya.
+Retry; if it repeats, the link may not point to a downloadable file.	Coba lagi; jika terus terjadi, link mungkin tidak mengarah ke file yang bisa diunduh.
+Retrying	Mencoba ulang
+Rule-based recommendations from your own measured downloads (no machine learning).	Rekomendasi berbasis aturan dari unduhan yang kamu ukur sendiri (tanpa machine learning).
+Rule: this is a large file ({}). Confirm to download.	Aturan: ini file besar ({}). Konfirmasi untuk mengunduh.
+Rules applied: {}	Aturan diterapkan: {}
+Rules run top to bottom; for each kind of action the first matching rule wins.	Aturan dijalankan dari atas ke bawah; untuk tiap jenis tindakan, aturan pertama yang cocok yang dipakai.
+Running	Berjalan
+SDM Browser	Browser SDM
+SDM continues with one connection. A paused download from this server must restart from the beginning.	SDM melanjutkan dengan satu koneksi. Unduhan dari server ini yang dijeda harus dimulai ulang dari awal.
+SDM diagnostics	Diagnostik SDM
+SDM downloads files and unprotected streams your browser session can access. It does not bypass logins, paywalls or DRM.	SDM mengunduh file dan stream tanpa proteksi yang bisa diakses sesi browser kamu. SDM tidak membobol login, paywall, atau DRM.
+SDM files by category	File SDM per kategori
+SDM follows 301/302 redirects, resumes with 206 Partial Content, waits as Retry-After asks on 429/503, retries 5xx with backoff, and does not retry permanent errors (403, 404, 416).	SDM mengikuti pengalihan 301/302, melanjutkan dengan 206 Partial Content, menunggu sesuai Retry-After pada 429/503, mencoba ulang 5xx dengan jeda bertahap, dan tidak mencoba ulang galat permanen (403, 404, 416).
+SDM has no accounts, ads or analytics servers. Statistics stay on this device. Cookies used for downloads are encrypted with a key that never leaves the device and are excluded from exports and diagnostic reports.	SDM tidak punya akun, iklan, atau server analitik. Statistik tetap di perangkat ini. Cookie untuk unduhan dienkripsi dengan kunci yang tidak pernah keluar dari perangkat dan tidak ikut diekspor maupun masuk laporan diagnostik.
+SDM manages the files it downloads. To manage another folder, grant access to it here (Android scoped storage).	SDM mengelola file yang diunduhnya. Untuk mengelola folder lain, beri akses ke folder itu di sini (penyimpanan terbatas Android).
+SDM shows progress, speed and remaining time in notifications, with pause and cancel buttons. Android asks for permission to show them.\n\nWithout it, downloads still run; you will see them in the system's task manager instead.	SDM menampilkan progres, kecepatan, dan sisa waktu di notifikasi, dengan tombol jeda dan batal. Android akan meminta izin untuk menampilkannya.\n\nTanpa izin itu, unduhan tetap berjalan; kamu akan melihatnya di pengelola tugas sistem.
+SDM switched to one connection to protect the file. Retry if it persists.	SDM beralih ke satu koneksi untuk melindungi file. Coba lagi jika terus terjadi.
+SDM waits as the server asks and uses fewer connections for this host.	SDM menunggu sesuai permintaan server dan memakai lebih sedikit koneksi untuk host ini.
+Sat	Sab
+Save	Simpan
+Save proxy	Simpan proxy
+Save to category folder	Simpan ke folder kategori
+Save to {}	Simpan ke {}
+Save to {} folder	Simpan ke folder {}
+Save user agent	Simpan user agent
+Saved as MP4 (audio and video combined). Sizes are estimates from the stream bitrate.	Disimpan sebagai MP4 (audio dan video digabung). Ukuran adalah perkiraan dari bitrate stream.
+Saved {}	{} disimpan
+Saves only the sound as M4A.	Hanya menyimpan suaranya sebagai M4A.
+Scan failed: {}	Pemindaian gagal: {}
+Scheduled	Terjadwal
+Scheduled start	Mulai terjadwal
+Scheduled start and pause	Mulai dan jeda terjadwal
+Scheduled stop reached	Waktu berhenti terjadwal tercapai
+Scheduler	Penjadwal
+Search	Cari
+Search file names	Cari nama file
+Search files	Cari file
+Search or enter address	Cari atau masukkan alamat
+Secure connection	Koneksi aman
+Segment failure rate	Tingkat kegagalan segmen
+Select all	Pilih semua
+Select files to download	Pilih file untuk diunduh
+Select none	Batalkan pilihan
+Send from computer	Kirim dari komputer
+Send links from a computer	Kirim link dari komputer
+Server does not support ranges; one connection is the only option	Server tidak mendukung range; satu koneksi adalah satu-satunya pilihan
+Server error	Galat server
+Set	Atur
+Set a screen lock first	Atur kunci layar dulu
+Set connections	Atur koneksi
+Set network policy	Atur kebijakan jaringan
+Settings	Setelan
+Settings, rules and schedule saved	Setelan, aturan, dan jadwal disimpan
+Settings, smart rules and schedule	Setelan, aturan pintar, dan jadwal
+Share	Bagikan
+Share link	Bagikan link
+Show all	Tampilkan semua
+Show, hide and reorder the cards on Home.	Tampilkan, sembunyikan, dan atur urutan kartu di Beranda.
+Showing files over {} MB	Menampilkan file di atas {} MB
+Shows "Video detected — Download" when a video starts playing	Menampilkan "Video terdeteksi — Unduh" saat video mulai diputar
+Sign in through the SDM browser so the download carries your session, or check the link.	Login lewat browser SDM agar unduhan membawa sesi kamu, atau periksa link-nya.
+Simultaneous downloads: {}	Unduhan bersamaan: {}
+Site settings	Setelan situs
+Size	Ukuran
+Skip	Lewati
+Small files first	File kecil dulu
+Smart rules	Aturan pintar
+Some phones stop background downloads aggressively. Exempting SDM from battery optimization keeps long downloads running.	Beberapa HP menghentikan unduhan di latar belakang secara agresif. Mengecualikan SDM dari optimasi baterai menjaga unduhan panjang tetap berjalan.
+Some sign-in and video embeds need them	Beberapa login dan video sematan memerlukannya
+Sort	Urutkan
+Source	Sumber
+Source URL	URL sumber
+Source host is {}	Host sumber {}
+Speed Intelligence picks connections	Speed Intelligence memilih jumlah koneksi
+Speed history	Riwayat kecepatan
+Speed limit	Batas kecepatan
+Speed limit (KB/s, 0 = unlimited)	Batas kecepatan (KB/s, 0 = tanpa batas)
+Speed limit (KB/s, empty = unlimited)	Batas kecepatan (KB/s, kosong = tanpa batas)
+Speed profile	Profil kecepatan
+Speed samples appear while downloads run (one every 5 seconds).	Sampel kecepatan muncul selama unduhan berjalan (satu tiap 5 detik).
+Speed {} · {} connection(s)	Kecepatan {} · {} koneksi
+Start	Mulai
+Start at	Mulai pada
+Start time	Waktu mulai
+Starting on time	Mulai tepat waktu
+Starts later	Mulai nanti
+Starts scheduled downloads at the exact minute	Memulai unduhan terjadwal tepat pada menitnya
+Statistics and connection recommendations	Statistik dan rekomendasi koneksi
+Stay informed	Tetap terpantau
+Stopped by Android	Dihentikan oleh Android
+Storage analysis	Analisis penyimpanan
+Storage below	Penyimpanan di bawah
+Storage error	Galat penyimpanan
+Storage is almost full; downloads may fail.	Penyimpanan hampir penuh; unduhan bisa gagal.
+Subtitles (saved as .srt next to the video)	Subtitle (disimpan sebagai .srt di samping video)
+Success rate	Tingkat keberhasilan
+Suggested: {} · {}	Disarankan: {} · {}
+Suggestion: {}	Saran: {}
+Sun	Min
+Supported (ranges)	Didukung (range)
+System	Sistem
+System notification settings	Setelan notifikasi sistem
+TXT (one link per line) or an SDM JSON list	TXT (satu link per baris) atau daftar JSON SDM
+Tabs	Tab
+Tap the star in the browser to save a page.	Ketuk bintang di browser untuk menyimpan halaman.
+Tap to open SDM	Ketuk untuk membuka SDM
+Temporary files	File sementara
+The connection to the server was refused or reset.	Koneksi ke server ditolak atau diputus.
+The destination file system cannot hold a file this large (FAT32 has a 4 GB limit).	Sistem file tujuan tidak bisa menampung file sebesar ini (FAT32 berbatas 4 GB).
+The device has no usable internet connection.	Perangkat tidak punya koneksi internet yang bisa dipakai.
+The download stopped unexpectedly (app closed or system stopped it).	Unduhan berhenti tiba-tiba (aplikasi ditutup atau dihentikan sistem).
+The downloaded file does not match the expected checksum.	File yang diunduh tidak cocok dengan checksum yang diharapkan.
+The file could not be written.	File tidak bisa ditulis.
+The file is removed permanently.	File dihapus permanen.
+The file on the server changed while it was downloading.	File di server berubah saat sedang diunduh.
+The page works only while this screen is open. Anyone on the same network who knows the code could send links, so close this screen when you're done.	Halaman ini hanya berfungsi selama layar ini terbuka. Siapa pun di jaringan yang sama yang tahu kodenya bisa mengirim link, jadi tutup layar ini setelah selesai.
+The private folder opens with your fingerprint, face or screen lock. Add a PIN, pattern or password in the system settings.	Folder privat dibuka dengan sidik jari, wajah, atau kunci layar. Tambahkan PIN, pola, atau sandi di setelan sistem.
+The server did not answer within the configured timeout.	Server tidak menjawab dalam batas waktu yang diatur.
+The server does not support resuming or multi-connection downloads.	Server tidak mendukung lanjutan unduhan atau unduhan multi-koneksi.
+The server does not support resuming; SDM will use one connection.	Server tidak mendukung lanjutan unduhan; SDM akan memakai satu koneksi.
+The server is rate limiting (HTTP 429).	Server membatasi laju permintaan (HTTP 429).
+The server refused a link that worked before. Signed or temporary links expire.	Server menolak link yang sebelumnya berfungsi. Link bertanda tangan atau sementara bisa kedaluwarsa.
+The server refused the request (HTTP 401/403).	Server menolak permintaan (HTTP 401/403).
+The server rejected the resume position (HTTP 416).	Server menolak posisi lanjutan (HTTP 416).
+The server reported an internal error (HTTP 5xx).	Server melaporkan galat internal (HTTP 5xx).
+The server response could not be used (unexpected status or headers).	Respons server tidak bisa dipakai (status atau header tidak terduga).
+The server returned a different part of the file than requested.	Server mengirim bagian file yang berbeda dari yang diminta.
+The server says the file does not exist (HTTP 404/410).	Server menyatakan file tidak ada (HTTP 404/410).
+Theme	Tema
+There is not enough free space for this file.	Ruang kosong tidak cukup untuk file ini.
+Third-party cookies	Cookie pihak ketiga
+This kind of link cannot be downloaded directly (for example a form submission or protected stream).	Jenis link ini tidak bisa diunduh langsung (misalnya pengiriman formulir atau stream yang dilindungi).
+This link is already downloading or queued.	Link ini sedang diunduh atau sudah antre.
+This link was already downloaded.	Link ini sudah pernah diunduh.
+This page has no article SDM can show in reader view	Halaman ini tidak punya artikel yang bisa ditampilkan di mode baca
+This video's source isn't visible to SDM (it may be protected or use an unsupported format)	Sumber video ini tidak terlihat oleh SDM (mungkin dilindungi atau memakai format yang tidak didukung)
+Thu	Kam
+Timeout	Waktu habis
+Timeouts	Batas waktu
+Today	Hari ini
+Toggle grid	Ganti tampilan kisi
+Tokens: {name} original name, {n} number, {ext} extension. The extension is kept automatically.	Token: {name} nama asli, {n} nomor, {ext} ekstensi. Ekstensi dipertahankan otomatis.
+Too many requests	Terlalu banyak permintaan
+Total downloaded	Total terunduh
+Totals	Total
+Try again later or raise the timeouts in Network settings.	Coba lagi nanti atau naikkan batas waktu di Setelan jaringan.
+Tue	Sel
+Turn off to reduce motion	Matikan untuk mengurangi gerakan
+Turning it off can break pages and video players	Mematikannya bisa merusak halaman dan pemutar video
+Type	Jenis
+Undo	Urungkan
+Unfinished downloads	Unduhan yang belum selesai
+Unfinished parts are removed only when you cancel or delete those downloads; SDM never deletes files without asking.	Bagian yang belum selesai hanya dihapus saat kamu membatalkan atau menghapus unduhan itu; SDM tidak pernah menghapus file tanpa bertanya.
+Unknown	Tidak diketahui
+Unknown error	Galat tidak diketahui
+Unknown type	Jenis tidak diketahui
+Unlimited (tap to change)	Tanpa batas (ketuk untuk mengubah)
+Unlock	Buka kunci
+Unmetered only	Hanya jaringan tanpa kuota
+Unmetered treats a metered Wi-Fi hotspot like mobile data. Downloads pause on a disallowed network and resume automatically.	"Tanpa kuota" memperlakukan hotspot Wi-Fi berkuota seperti data seluler. Unduhan dijeda di jaringan yang tidak diizinkan dan berlanjut otomatis.
+Unpacks into a folder next to the .zip when it finishes. The .zip is kept.	Membongkar ke folder di samping .zip setelah selesai. File .zip tetap disimpan.
+Unsupported source	Sumber tidak didukung
+Use a fresh link to the same file; SDM keeps the downloaded part only if size and validators match.	Pakai link baru ke file yang sama; SDM mempertahankan bagian yang sudah terunduh hanya jika ukuran dan validatornya cocok.
+Use colors from your wallpaper	Pakai warna dari wallpaper
+Use exact alarms	Pakai alarm tepat waktu
+Use {} connections	Pakai {} koneksi
+Uses measured results per server, never above the download's limit	Memakai hasil terukur per server, tidak pernah melebihi batas unduhan
+Usually temporary; SDM retries with backoff.	Biasanya sementara; SDM mencoba ulang dengan jeda bertahap.
+Verified	Terverifikasi
+Verifying	Memverifikasi
+Version	Versi
+Version {}	Versi {}
+Video detected{}	Video terdeteksi{}
+Video playing{} — can't be downloaded	Video diputar{} — tidak bisa diunduh
+Video stream	Stream video
+Videos	Video
+Videos and audio this page loaded or played. HLS and DASH streams are saved as MP4. DRM-protected and live streams can't be downloaded.	Video dan audio yang dimuat atau diputar halaman ini. Stream HLS dan DASH disimpan sebagai MP4. Stream ber-DRM dan siaran langsung tidak bisa diunduh.
+Waiting	Menunggu
+Waiting for Wi-Fi	Menunggu Wi-Fi
+Waiting for battery	Menunggu baterai
+Waiting for charging	Menunggu pengisian daya
+Waiting for network	Menunggu jaringan
+Warn when storage is low	Peringatkan saat penyimpanan hampir penuh
+Wed	Rab
+Wi-Fi only	Hanya Wi-Fi
+Works in the background	Berjalan di latar belakang
+measuring…	mengukur…
+next start {}	mulai berikutnya {}
+no internet verified	internet belum terverifikasi
+tap for details	ketuk untuk detail
+unstable	tidak stabil
+{} ({} bytes)	{} ({} byte)
+{} blocked	{} diblokir
+{} connection(s) · {} profile · segment ≥ {} · {} retries	{} koneksi · profil {} · segmen ≥ {} · {} percobaan
+{} connections · {} at once · {}	{} koneksi · {} sekaligus · {}
+{} downloading	{} sedang diunduh
+{} file(s) · {}	{} file · {}
+{} found. Pick the ones to download; each uses this tab's session.	{} ditemukan. Pilih yang ingin diunduh; masing-masing memakai sesi tab ini.
+{} free of {}	{} kosong dari {}
+{} identical files · {} each	{} file identik · masing-masing {}
+{} left	sisa {}
+{} left (estimate)	sisa {} (perkiraan)
+{} link(s) received and added to Downloads.	{} link diterima dan ditambahkan ke Unduhan.
+{} of {}	{} dari {}
+{} of {} · {}%	{} dari {} · {}%
+{} paused	{} dijeda
+{} queued · {} waiting for network · {} failed	{} antre · {} menunggu jaringan · {} gagal
+{} requests blocked on this page	{} permintaan diblokir di halaman ini
+{} running · {} waiting · {}	{} berjalan · {} menunggu · {}
+{} segments	{} segmen
+{} selected	{} dipilih
+{} skipped	{} dilewati
+{} subtitle(s)	{} subtitle
+{} theme · {}	Tema {} · {}
+{} used · {} free of {}	{} terpakai · {} kosong dari {}
+{} valid link(s)	{} link valid
+{} video stream	Stream video {}
+{} · query {} ms	{} · kueri {} md
+{} · {} connection(s)	{} · {} koneksi
+{} · {} · avg {}	{} · {} · rata-rata {}
+• Copy a link: SDM offers to download it when you open the app.\n• Use the built-in browser: downloads carry your sign-in cookies.\n• Share a link to SDM from any app.\n• Set rules and schedules in Settings.	• Salin link: SDM menawarkan untuk mengunduhnya saat aplikasi dibuka.\n• Pakai browser bawaan: unduhan membawa cookie login kamu.\n• Bagikan link ke SDM dari aplikasi mana saja.\n• Atur aturan dan jadwal di Setelan.
+…and {} more	…dan {} lagi

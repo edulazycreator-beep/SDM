@@ -74,6 +74,8 @@ data class AppSettings(
     val adBlock: Boolean = true,
     /** Offer "Video detected — Download" when a video starts playing in the browser. */
     val announceVideos: Boolean = true,
+    /** "system", "en" or "id". */
+    val language: String = "system",
 ) {
     val globalLimitBps: Long get() = if (speedLimitProfile == SpeedLimitProfile.CUSTOM) customLimitBps else speedLimitProfile.bytesPerSecond
 }
@@ -92,7 +94,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
         val dns = stringPreferencesKey("dns"); val proxyType = stringPreferencesKey("proxy_type"); val proxyHost = stringPreferencesKey("proxy_host"); val proxyPort = intPreferencesKey("proxy_port")
         val clipboard = booleanPreferencesKey("clipboard"); val onboarding = booleanPreferencesKey("onboarding"); val widgets = stringPreferencesKey("widgets")
         val search = stringPreferencesKey("search"); val desktop = booleanPreferencesKey("desktop"); val ordering = stringPreferencesKey("ordering")
-        val autoExtract = booleanPreferencesKey("auto_extract_zip"); val adBlock = booleanPreferencesKey("ad_block"); val announce = booleanPreferencesKey("announce_videos")
+        val autoExtract = booleanPreferencesKey("auto_extract_zip"); val adBlock = booleanPreferencesKey("ad_block"); val announce = booleanPreferencesKey("announce_videos"); val language = stringPreferencesKey("language")
         val autoResume = booleanPreferencesKey("auto_resume"); val perNotif = booleanPreferencesKey("per_notif"); val clipHash = intPreferencesKey("clip_hash")
         val exactAlarms = booleanPreferencesKey("exact_alarms")
     }
@@ -116,7 +118,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             dashboardWidgets = p[K.widgets]?.split(',')?.mapNotNull { n -> DashboardWidget.entries.firstOrNull { it.name == n } } ?: d.dashboardWidgets,
             searchEngine = p[K.search] ?: d.searchEngine, desktopMode = p[K.desktop] ?: d.desktopMode, queueOrdering = p.enum(K.ordering, d.queueOrdering),
             autoResumeOnStart = p[K.autoResume] ?: d.autoResumeOnStart, perDownloadNotifications = p[K.perNotif] ?: d.perDownloadNotifications,
-            autoExtractZip = p[K.autoExtract] ?: d.autoExtractZip, adBlock = p[K.adBlock] ?: d.adBlock, announceVideos = p[K.announce] ?: d.announceVideos,
+            autoExtractZip = p[K.autoExtract] ?: d.autoExtractZip, adBlock = p[K.adBlock] ?: d.adBlock, announceVideos = p[K.announce] ?: d.announceVideos, language = p[K.language] ?: d.language,
             lastClipboardHash = p[K.clipHash] ?: d.lastClipboardHash, exactAlarms = p[K.exactAlarms] ?: d.exactAlarms,
         )
     }
@@ -135,7 +137,7 @@ class SettingsRepository @Inject constructor(@ApplicationContext private val con
             p[K.proxyHost] = s.proxyHost.trim(); p[K.proxyPort] = s.proxyPort.coerceIn(1, 65535); p[K.clipboard] = s.clipboardDetection; p[K.onboarding] = s.onboardingDone
             p[K.widgets] = s.dashboardWidgets.joinToString(",") { it.name }; p[K.search] = s.searchEngine; p[K.desktop] = s.desktopMode; p[K.ordering] = s.queueOrdering.name
             p[K.autoResume] = s.autoResumeOnStart; p[K.perNotif] = s.perDownloadNotifications; p[K.clipHash] = s.lastClipboardHash; p[K.exactAlarms] = s.exactAlarms
-            p[K.autoExtract] = s.autoExtractZip; p[K.adBlock] = s.adBlock; p[K.announce] = s.announceVideos
+            p[K.autoExtract] = s.autoExtractZip; p[K.adBlock] = s.adBlock; p[K.announce] = s.announceVideos; p[K.language] = s.language
         }
     }
 }

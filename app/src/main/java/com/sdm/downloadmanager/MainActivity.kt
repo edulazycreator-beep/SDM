@@ -39,7 +39,7 @@ class MainActivity : ComponentActivity() {
     /** The opening app's permission to read a .torrent ends soon, so SDM keeps its own copy. */
     private fun importTorrentFile(uri: android.net.Uri) {
         val bytes = runCatching { contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-        if (bytes == null || bytes.size > (32 shl 20)) { android.widget.Toast.makeText(this, "Could not read the torrent file", android.widget.Toast.LENGTH_SHORT).show(); return }
+        if (bytes == null || bytes.size > (32 shl 20)) { android.widget.Toast.makeText(this, com.sdm.core.common.I18n.tr("Could not read the torrent file"), android.widget.Toast.LENGTH_SHORT).show(); return }
         val name = runCatching {
             contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
         }.getOrNull()?.let { com.sdm.core.common.FileNames.sanitize(it) } ?: "download.torrent"
@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
             appViewModel.onWindowFocused()
             if (pendingPaste) {
                 pendingPaste = false
-                appViewModel.pasteFromClipboard { android.widget.Toast.makeText(this, "No link in the clipboard", android.widget.Toast.LENGTH_SHORT).show() }
+                appViewModel.pasteFromClipboard { android.widget.Toast.makeText(this, com.sdm.core.common.I18n.tr("No link in the clipboard"), android.widget.Toast.LENGTH_SHORT).show() }
             }
         }
     }

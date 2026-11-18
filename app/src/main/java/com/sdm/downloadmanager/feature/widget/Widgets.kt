@@ -10,6 +10,7 @@ import android.os.Build
 import android.service.quicksettings.TileService
 import android.widget.RemoteViews
 import com.sdm.core.common.Formatters
+import com.sdm.core.common.I18n
 import com.sdm.core.data.download.DownloadRepository
 import com.sdm.domain.DownloadState
 import com.sdm.domain.LiveProgress
@@ -88,21 +89,22 @@ class WidgetUpdater @Inject constructor(
         val total = active.sumOf { live[it.id]?.totalBytes ?: it.totalBytes ?: 0 }
         val speed = active.sumOf { live[it.id]?.speedBps ?: 0 }
         val v = RemoteViews(context.packageName, R.layout.widget_downloads)
-        v.setTextViewText(R.id.widget_title, when {
+        v.setTextViewText(R.id.widget_title, I18n.tr(when {
             active.isNotEmpty() -> "${active.size} downloading"
             paused > 0 -> "$paused paused"
             else -> "No active downloads"
-        })
+        }))
         v.setTextViewText(R.id.widget_detail, when {
             active.isNotEmpty() -> (active.first().fileName.take(40)) + " · " + Formatters.speed(speed) + if (total > 0) " · ${Formatters.percent(done, total)}%" else ""
-            else -> "Tap to open SDM"
+            else -> I18n.tr("Tap to open SDM")
         })
         v.setProgressBar(R.id.widget_progress, 1000, if (total > 0) (done * 1000 / total).toInt() else 0, active.isNotEmpty() && total <= 0)
         v.setViewVisibility(R.id.widget_progress, if (active.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE)
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags))
         val toggle = if (active.isNotEmpty()) DownloadsWidget.ACTION_PAUSE_ALL else DownloadsWidget.ACTION_RESUME_ALL
-        v.setTextViewText(R.id.widget_toggle, if (active.isNotEmpty()) "Pause all" else "Resume all")
+        v.setTextViewText(R.id.widget_toggle, I18n.tr(if (active.isNotEmpty()) "Pause all" else "Resume all"))
+        v.setTextViewText(R.id.widget_paste, I18n.tr("Paste link"))
         v.setViewVisibility(R.id.widget_toggle, if (active.isEmpty() && paused == 0) android.view.View.GONE else android.view.View.VISIBLE)
         v.setOnClickPendingIntent(R.id.widget_toggle, PendingIntent.getBroadcast(context, 1, Intent(context, DownloadsWidget::class.java).setAction(toggle), flags))
         v.setOnClickPendingIntent(R.id.widget_paste, PendingIntent.getActivity(context, 2, pasteIntent(context), flags))

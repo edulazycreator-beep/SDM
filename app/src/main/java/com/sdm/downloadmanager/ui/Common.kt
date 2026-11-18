@@ -15,10 +15,10 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import com.sdm.core.designsystem.i18n.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -63,7 +63,7 @@ fun snackbarLift(): androidx.compose.ui.unit.Dp {
 
 fun Context.copyToClipboard(label: String, text: String) {
     getSystemService(ClipboardManager::class.java)?.setPrimaryClip(ClipData.newPlainText(label, text))
-    Toast.makeText(this, "Copied", Toast.LENGTH_SHORT).show()
+    Toast.makeText(this, com.sdm.core.common.I18n.tr("Copied"), Toast.LENGTH_SHORT).show()
 }
 
 /** Opens a file: video and audio play in SDM's own player unless [chooser] is set. */
@@ -77,8 +77,8 @@ fun Context.openFile(uri: Uri, mime: String?, title: String? = null, chooser: Bo
 fun Context.openWith(uri: Uri, mime: String?) {
     val type = mime ?: "*/*"
     val intent = Intent(Intent.ACTION_VIEW).setDataAndType(uri, type).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-    try { startActivity(Intent.createChooser(intent, "Open with").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-    catch (_: ActivityNotFoundException) { Toast.makeText(this, "No app can open this file", Toast.LENGTH_SHORT).show() }
+    try { startActivity(Intent.createChooser(intent, com.sdm.core.common.I18n.tr("Open with")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    catch (_: ActivityNotFoundException) { Toast.makeText(this, com.sdm.core.common.I18n.tr("No app can open this file"), Toast.LENGTH_SHORT).show() }
 }
 
 fun Context.shareFiles(uris: List<Uri>, mimes: List<String?>) {
@@ -96,7 +96,7 @@ fun Context.shareText(text: String) {
 
 fun Context.openInBrowser(url: String) {
     try { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-    catch (_: ActivityNotFoundException) { Toast.makeText(this, "No browser installed", Toast.LENGTH_SHORT).show() }
+    catch (_: ActivityNotFoundException) { Toast.makeText(this, com.sdm.core.common.I18n.tr("No browser installed"), Toast.LENGTH_SHORT).show() }
 }
 
 fun mimeFor(name: String, mime: String?) = mime ?: MimeTypes.forName(name)

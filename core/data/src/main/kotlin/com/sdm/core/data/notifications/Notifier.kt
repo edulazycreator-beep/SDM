@@ -15,6 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import com.sdm.core.common.Formatters
+import com.sdm.core.common.I18n
 import com.sdm.core.data.execution.NotificationActionReceiver
 import com.sdm.domain.Download
 import com.sdm.domain.LiveProgress
@@ -35,10 +36,10 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
         if (Build.VERSION.SDK_INT < 26) return
         val m = context.getSystemService(NotificationManager::class.java)
         m.createNotificationChannels(listOf(
-            NotificationChannel(CH_ACTIVE, "Active downloads", NotificationManager.IMPORTANCE_LOW).apply { description = "Progress, speed and remaining time"; setShowBadge(false) },
-            NotificationChannel(CH_DONE, "Completed downloads", NotificationManager.IMPORTANCE_DEFAULT),
-            NotificationChannel(CH_ERROR, "Download problems", NotificationManager.IMPORTANCE_DEFAULT),
-            NotificationChannel(CH_INFO, "Reminders and rules", NotificationManager.IMPORTANCE_LOW),
+            NotificationChannel(CH_ACTIVE, I18n.tr("Active downloads"), NotificationManager.IMPORTANCE_LOW).apply { description = I18n.tr("Progress, speed and remaining time"); setShowBadge(false) },
+            NotificationChannel(CH_DONE, I18n.tr("Completed downloads"), NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(CH_ERROR, I18n.tr("Download problems"), NotificationManager.IMPORTANCE_DEFAULT),
+            NotificationChannel(CH_INFO, I18n.tr("Reminders and rules"), NotificationManager.IMPORTANCE_LOW),
         ))
     }
 
@@ -62,7 +63,7 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
     fun leaseNotification(active: Int, speedBps: Long): Notification =
         NotificationCompat.Builder(context, CH_ACTIVE)
             .setSmallIcon(android.R.drawable.stat_sys_download)
-            .setContentTitle(if (active == 1) "Downloading 1 file" else "Downloading $active files")
+            .setContentTitle(I18n.tr(if (active == 1) "Downloading 1 file" else "Downloading $active files"))
             .setContentText(Formatters.speed(speedBps))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -88,15 +89,15 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
         val n = NotificationCompat.Builder(context, CH_ACTIVE)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle(d.fileName)
-            .setContentText(text)
+            .setContentText(I18n.tr(text))
             .setSubText("$pct%")
             .setProgress(100, pct, total == null)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setGroup(GROUP)
             .setContentIntent(appIntent(d.id))
-            .addAction(0, "Pause", action(d.id, ACTION_PAUSE))
-            .addAction(0, "Cancel", action(d.id, ACTION_CANCEL))
+            .addAction(0, I18n.tr("Pause"), action(d.id, ACTION_PAUSE))
+            .addAction(0, I18n.tr("Cancel"), action(d.id, ACTION_CANCEL))
             .build()
         nm.notify(idFor(d.id), n)
     }
@@ -107,11 +108,11 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
         nm.notify(idFor(d.id), NotificationCompat.Builder(context, CH_ACTIVE)
             .setSmallIcon(android.R.drawable.ic_media_pause)
             .setContentTitle(d.fileName)
-            .setContentText("$reason · ${d.progressPercent}%")
+            .setContentText(I18n.tr("$reason · ${d.progressPercent}%"))
             .setGroup(GROUP)
             .setContentIntent(appIntent(d.id))
-            .addAction(0, "Resume", action(d.id, ACTION_RESUME))
-            .addAction(0, "Cancel", action(d.id, ACTION_CANCEL))
+            .addAction(0, I18n.tr("Resume"), action(d.id, ACTION_RESUME))
+            .addAction(0, I18n.tr("Cancel"), action(d.id, ACTION_CANCEL))
             .build())
     }
 
@@ -126,7 +127,7 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
         } ?: appIntent(d.id)
         nm.notify(idFor(d.id) + DONE_OFFSET, NotificationCompat.Builder(context, CH_DONE)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("Download complete")
+            .setContentTitle(I18n.tr("Download complete"))
             .setContentText("${d.fileName} · ${Formatters.bytes(d.totalBytes)}")
             .setAutoCancel(true)
             .setGroup(GROUP_DONE)
@@ -140,13 +141,13 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
         if (!canNotify()) return
         nm.notify(idFor(d.id) + DONE_OFFSET, NotificationCompat.Builder(context, CH_ERROR)
             .setSmallIcon(android.R.drawable.stat_notify_error)
-            .setContentTitle("$title: ${d.fileName}")
-            .setContentText(message)
+            .setContentTitle(I18n.tr(title) + ": ${d.fileName}")
+            .setContentText(I18n.tr(message))
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setAutoCancel(true)
             .setGroup(GROUP_DONE)
             .setContentIntent(appIntent(d.id))
-            .addAction(0, "Retry", action(d.id, ACTION_RETRY))
+            .addAction(0, I18n.tr("Retry"), action(d.id, ACTION_RETRY))
             .build())
     }
 
@@ -155,8 +156,8 @@ class Notifier @Inject constructor(@ApplicationContext private val context: Cont
         if (!canNotify()) return
         nm.notify(INFO_BASE + id, NotificationCompat.Builder(context, CH_INFO)
             .setSmallIcon(android.R.drawable.stat_sys_warning)
-            .setContentTitle(title)
-            .setContentText(text)
+            .setContentTitle(I18n.tr(title))
+            .setContentText(I18n.tr(text))
             .setAutoCancel(true)
             .setContentIntent(appIntent(null))
             .build())

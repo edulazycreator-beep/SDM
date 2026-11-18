@@ -1,5 +1,6 @@
 package com.sdm.downloadmanager.ui
 
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
@@ -12,7 +13,7 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
+import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationRail
@@ -22,7 +23,7 @@ import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Text
+import com.sdm.core.designsystem.i18n.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -93,8 +94,21 @@ private val topLevels = listOf(
     TopLevel("Settings", Icons.Filled.Settings, SettingsRoute) { it.hasRoute(SettingsRoute::class) },
 )
 
+/** Provides the app language (device language unless chosen in Appearance); texts recompose when it changes. */
 @Composable
 fun SdmApp(vm: AppViewModel) {
+    val settings by vm.settings.collectAsState()
+    val config = androidx.compose.ui.platform.LocalConfiguration.current
+    val chosen = settings?.language ?: "system"
+    val language = remember(chosen, config) {
+        com.sdm.core.common.I18n.override = chosen.takeIf { it != "system" }
+        com.sdm.core.common.I18n.language()
+    }
+    androidx.compose.runtime.CompositionLocalProvider(com.sdm.core.designsystem.i18n.LocalLanguage provides language) { SdmAppContent(vm) }
+}
+
+@Composable
+private fun SdmAppContent(vm: AppViewModel) {
     val settings by vm.settings.collectAsState()
     val s = settings ?: return
     SdmTheme(
@@ -154,7 +168,15 @@ fun SdmApp(vm: AppViewModel) {
                     // system-bar insets itself (it used to consume the top inset, which made every top
                     // bar draw under the status bar).
                     contentWindowInsets = WindowInsets(0, 0, 0, 0),
-                    snackbarHost = { SnackbarHost(snackbar, if (bottomBar) Modifier else Modifier.navigationBarsPadding()) },
+                    snackbarHost = {
+                        SnackbarHost(snackbar, if (bottomBar) Modifier else Modifier.navigationBarsPadding()) { data ->
+                            // Own snackbar so the message and action are shown in the app language.
+                            androidx.compose.material3.Snackbar(
+                                action = data.visuals.actionLabel?.let { label -> { androidx.compose.material3.TextButton(onClick = { data.performAction() }) { Text(label) } } },
+                                dismissAction = if (data.visuals.withDismissAction) { { androidx.compose.material3.IconButton(onClick = { data.dismiss() }) { Icon(Icons.Filled.Close, "Close") } } } else null,
+                            ) { Text(data.visuals.message) }
+                        }
+                    },
                     bottomBar = {
                         if (bottomBar) NavigationBar {
                             topLevels.forEach { t ->

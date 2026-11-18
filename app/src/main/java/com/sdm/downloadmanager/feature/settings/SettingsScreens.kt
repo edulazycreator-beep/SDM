@@ -37,12 +37,12 @@ import androidx.compose.material.icons.filled.Rule
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.Icon
+import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Text
+import com.sdm.core.designsystem.i18n.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -142,6 +142,12 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
 fun AppearanceScreen(vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsState()
     SettingsPage("Appearance") {
+        SectionHeader("Language")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf("system" to "System", "en" to "English", "id" to "Bahasa Indonesia").forEach { (code, label) ->
+                FilterChip(s.language == code, { vm.update { it.copy(language = code) } }, { Text(label) })
+            }
+        }
         SectionHeader("Theme")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             ThemeMode.entries.forEach { m -> FilterChip(s.themeMode == m, { vm.update { it.copy(themeMode = m) } }, { Text(when (m) { ThemeMode.SYSTEM -> "System"; ThemeMode.LIGHT -> "Light"; ThemeMode.DARK -> "Dark"; ThemeMode.AMOLED -> "AMOLED black" }) }) }
@@ -281,7 +287,7 @@ fun AboutScreen() {
         SectionHeader("Privacy")
         Text("SDM has no accounts, ads or analytics servers. Statistics stay on this device. Cookies used for downloads are encrypted with a key that never leaves the device and are excluded from exports and diagnostic reports.", style = MaterialTheme.typography.bodyMedium)
         SectionHeader("Limits")
-        Text("SDM downloads files your browser session can access. It does not bypass logins, paywalls or DRM, and it cannot download protected streams.", style = MaterialTheme.typography.bodyMedium)
+        Text("SDM downloads files and unprotected streams your browser session can access. It does not bypass logins, paywalls or DRM.", style = MaterialTheme.typography.bodyMedium)
         TextButton(onClick = { ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) { Text("App info and permissions") }
         Icon(Icons.Filled.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
     }
