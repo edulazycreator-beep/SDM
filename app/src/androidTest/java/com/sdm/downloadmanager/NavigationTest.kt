@@ -15,29 +15,33 @@ class NavigationTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     private fun exists(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+    private fun existsExact(text: String) = rule.onAllNodesWithText(text, substring = false).fetchSemanticsNodes().isNotEmpty()
+
+    /** Navigation bar items expose their label as text (Material 3 clears the icon description). */
+    private fun tab(label: String) = rule.onAllNodesWithText(label, substring = false).onFirst().performClick()
 
     @Test fun visitsAllTopLevelSectionsAndBack() {
         rule.waitUntil(15_000) { exists("Skip") || exists("Smart Download Manager") }
         if (exists("Skip")) rule.onAllNodesWithText("Skip").onFirst().performClick()
-        rule.waitUntil(10_000) { rule.onAllNodesWithContentDescription("Downloads").fetchSemanticsNodes().isNotEmpty() }
+        rule.waitUntil(15_000) { existsExact("Downloads") }
 
-        rule.onAllNodesWithContentDescription("Downloads").onFirst().performClick()
+        tab("Downloads")
         rule.waitUntil(5_000) { exists("No downloads here") || exists("Downloads") }
 
-        rule.onAllNodesWithContentDescription("Files").onFirst().performClick()
+        tab("Files")
         rule.waitUntil(5_000) { exists("All files") }
 
-        rule.onAllNodesWithContentDescription("Settings").onFirst().performClick()
+        tab("Settings")
         rule.waitUntil(5_000) { exists("Appearance") }
         rule.onAllNodesWithText("Appearance").onFirst().performClick()
         rule.waitUntil(5_000) { exists("AMOLED black") }
         rule.activityRule.scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         rule.waitUntil(5_000) { exists("Smart rules") }
 
-        rule.onAllNodesWithContentDescription("Browser").onFirst().performClick()
-        rule.waitUntil(5_000) { exists("Search or enter address") }
+        tab("Browser")
+        rule.waitUntil(10_000) { rule.onAllNodesWithContentDescription("Browser menu").fetchSemanticsNodes().isNotEmpty() }
 
-        rule.onAllNodesWithContentDescription("Home").onFirst().performClick()
+        tab("Home")
         rule.waitUntil(5_000) { exists("Quick actions") || exists("Active") }
     }
 

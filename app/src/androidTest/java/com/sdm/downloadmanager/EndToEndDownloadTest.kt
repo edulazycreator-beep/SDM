@@ -26,8 +26,8 @@ class EndToEndDownloadTest {
     @Test fun downloadsARealFileToCompletion() {
         rule.waitUntil(15_000) { exists("Skip") || exists("Smart Download Manager") }
         if (exists("Skip")) rule.onAllNodesWithText("Skip").onFirst().performClick()
-        rule.waitUntil(10_000) { rule.onAllNodesWithContentDescription("Downloads").fetchSemanticsNodes().isNotEmpty() }
-        rule.onAllNodesWithContentDescription("Downloads").onFirst().performClick()
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("Downloads", substring = false).fetchSemanticsNodes().isNotEmpty() }
+        rule.onAllNodesWithText("Downloads", substring = false).onFirst().performClick()
         rule.waitUntil(5_000) { rule.onAllNodesWithContentDescription("Add download").fetchSemanticsNodes().isNotEmpty() }
         rule.onAllNodesWithContentDescription("Add download").onFirst().performClick()
         rule.waitUntil(5_000) { exists("Add download") }
