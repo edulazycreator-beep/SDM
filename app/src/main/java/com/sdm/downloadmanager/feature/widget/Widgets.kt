@@ -89,24 +89,37 @@ class WidgetUpdater @Inject constructor(
         val total = active.sumOf { live[it.id]?.totalBytes ?: it.totalBytes ?: 0 }
         val speed = active.sumOf { live[it.id]?.speedBps ?: 0 }
         val v = RemoteViews(context.packageName, R.layout.widget_downloads)
+        val running = active.filter { it.state.isActive }
+        val percent = if (total > 0) Formatters.percent(done, total) else null
         v.setTextViewText(R.id.widget_title, I18n.tr(when {
             active.isNotEmpty() -> "${active.size} downloading"
             paused > 0 -> "$paused paused"
             else -> "No active downloads"
         }))
         v.setTextViewText(R.id.widget_detail, when {
-            active.isNotEmpty() -> (active.first().fileName.take(40)) + " · " + Formatters.speed(speed) + if (total > 0) " · ${Formatters.percent(done, total)}%" else ""
-            else -> I18n.tr("Tap to open SDM")
+            active.size == 1 -> active.first().fileName
+            active.size > 1 -> active.first().fileName + I18n.tr(" and {} more").replace("{}", (active.size - 1).toString())
+            paused > 0 -> I18n.tr("Tap Resume all to continue")
+            else -> I18n.tr("Copy a link, then tap Paste link")
         })
-        v.setProgressBar(R.id.widget_progress, 1000, if (total > 0) (done * 1000 / total).toInt() else 0, active.isNotEmpty() && total <= 0)
-        v.setViewVisibility(R.id.widget_progress, if (active.isEmpty()) android.view.View.GONE else android.view.View.VISIBLE)
+        v.setTextViewText(R.id.widget_percent, if (active.isNotEmpty() && percent != null) "$percent%" else "")
+        v.setTextViewText(R.id.widget_speed, when {
+            running.isNotEmpty() -> Formatters.speed(speed) + if (total > 0) " · " + Formatters.bytes(done) + " / " + Formatters.bytes(total) else ""
+            active.isNotEmpty() -> I18n.tr("Waiting to start")
+            else -> ""
+        })
+        val showProgress = active.isNotEmpty()
+        v.setViewVisibility(R.id.widget_progress, if (showProgress) android.view.View.VISIBLE else android.view.View.GONE)
+        v.setViewVisibility(R.id.widget_speed, if (showProgress) android.view.View.VISIBLE else android.view.View.GONE)
+        v.setProgressBar(R.id.widget_progress, 1000, if (total > 0) (done * 1000 / total).toInt() else 0, showProgress && total <= 0)
         val flags = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         v.setOnClickPendingIntent(R.id.widget_root, PendingIntent.getActivity(context, 0, Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), flags))
-        val toggle = if (active.isNotEmpty()) DownloadsWidget.ACTION_PAUSE_ALL else DownloadsWidget.ACTION_RESUME_ALL
-        v.setTextViewText(R.id.widget_toggle, I18n.tr(if (active.isNotEmpty()) "Pause all" else "Resume all"))
-        v.setTextViewText(R.id.widget_paste, I18n.tr("Paste link"))
+        val pausing = active.isNotEmpty()
+        v.setTextViewText(R.id.widget_toggle_text, I18n.tr(if (pausing) "Pause all" else "Resume all"))
+        v.setImageViewResource(R.id.widget_toggle_icon, if (pausing) R.drawable.ic_widget_pause else R.drawable.ic_widget_play)
+        v.setTextViewText(R.id.widget_paste_text, I18n.tr("Paste link"))
         v.setViewVisibility(R.id.widget_toggle, if (active.isEmpty() && paused == 0) android.view.View.GONE else android.view.View.VISIBLE)
-        v.setOnClickPendingIntent(R.id.widget_toggle, PendingIntent.getBroadcast(context, 1, Intent(context, DownloadsWidget::class.java).setAction(toggle), flags))
+        v.setOnClickPendingIntent(R.id.widget_toggle, PendingIntent.getBroadcast(context, 1, Intent(context, DownloadsWidget::class.java).setAction(if (pausing) DownloadsWidget.ACTION_PAUSE_ALL else DownloadsWidget.ACTION_RESUME_ALL), flags))
         v.setOnClickPendingIntent(R.id.widget_paste, PendingIntent.getActivity(context, 2, pasteIntent(context), flags))
         AppWidgetManager.getInstance(context).updateAppWidget(ids, v)
     }

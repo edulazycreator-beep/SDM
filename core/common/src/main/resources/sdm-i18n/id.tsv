@@ -787,3 +787,7 @@ SDM has no permission to read this file.	SDM tidak punya izin membaca file ini.
 This file's format can't be read by the built-in player.	Format file ini tidak bisa dibaca pemutar bawaan.
 This phone can't decode this video's format.	HP ini tidak bisa memutar format video ini.
 Playback failed ({}).	Pemutaran gagal ({}).
+ and {} more	 dan {} lainnya
+Tap Resume all to continue	Ketuk Lanjutkan semua untuk meneruskan
+Copy a link, then tap Paste link	Salin link, lalu ketuk Tempel link
+Waiting to start	Menunggu dimulai
