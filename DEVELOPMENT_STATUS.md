@@ -15,7 +15,7 @@ been run yet (see "Not yet verified").
 | Compile all modules (debug + release) | Pass |
 | Module dependency rules (`checkModuleDependencies`) | Pass |
 | Android Lint (`:app:lintDebug`, errors abort) | Pass |
-| JVM unit tests | 54 run, 0 failed |
+| JVM unit tests | 63 run, 0 failed |
 | Instrumented tests, emulator API 34 | 9 run, 0 failed |
 | Release APK (R8) installs, launches and handles a share intent without crash | Pass |
 | Release APK / AAB / debug APK published to GitHub Releases | Pass (latest: [Releases › Latest](https://github.com/edulazycreator-beep/SDM/releases/latest)) |
@@ -90,7 +90,9 @@ been run yet (see "Not yet verified").
   with qualities, duration, estimated size and reasons when blocked; page videos can go fullscreen.
 - Add dialog: quality chips for streams; pasted `.m3u8` links and playlist content types are
   recognised.
-- Not yet verified on a device: remuxing of real-world streams, detection on major video sites.
+- On-device test `StreamDownloadTest`: pasted `.m3u8` (master + 3 MPEG-TS segments, H.264 + AAC,
+  fixture in `testdata/hls`) → quality chip → download → MP4 with both tracks in MediaStore.
+- Not yet verified on a device: real-world sites (detection while playing, remux of their streams).
 
 ## UI fixes (2026-11-18)
 - Top bars drew under the status bar: the outer app Scaffold consumed the system-bar insets
