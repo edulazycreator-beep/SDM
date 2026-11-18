@@ -16,6 +16,18 @@ object Formatters {
         return String.format(Locale.US, if (v >= 100) "%.0f %s" else "%.1f %s", v, units[i])
     }
 
+    /** "Today 14:05", "Yesterday 09:12", "12 Nov" or "12 Nov 2025" relative to [now]. */
+    fun relativeDate(epochMillis: Long, now: Long = System.currentTimeMillis(), zone: java.time.ZoneId = java.time.ZoneId.systemDefault()): String {
+        val t = java.time.Instant.ofEpochMilli(epochMillis).atZone(zone)
+        val today = java.time.Instant.ofEpochMilli(now).atZone(zone).toLocalDate()
+        val time = java.time.format.DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault()).format(t)
+        return when (t.toLocalDate()) {
+            today -> "Today $time"
+            today.minusDays(1) -> "Yesterday $time"
+            else -> java.time.format.DateTimeFormatter.ofPattern(if (t.year == today.year) "d MMM" else "d MMM yyyy", Locale.getDefault()).format(t)
+        }
+    }
+
     fun speed(bytesPerSecond: Long): String = if (bytesPerSecond <= 0) "0 B/s" else bytes(bytesPerSecond) + "/s"
 
     fun duration(seconds: Long?): String {

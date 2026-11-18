@@ -1,0 +1,40 @@
+package com.sdm.downloadmanager
+
+import androidx.compose.ui.test.junit4.accessibility.enableAccessibilityChecks
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.tryPerformAccessibilityChecks
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+
+/**
+ * Runs the Accessibility Test Framework (touch target size, contrast, labels) on the main screens.
+ * A violation fails the test with the offending node.
+ */
+@RunWith(AndroidJUnit4::class)
+class AccessibilityTest {
+    @get:Rule val rule = createAndroidComposeRule<MainActivity>()
+
+    private fun exists(text: String) = rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
+    private fun existsExact(text: String) = rule.onAllNodesWithText(text, substring = false).fetchSemanticsNodes().isNotEmpty()
+
+    @Test fun mainScreensPassAccessibilityChecks() {
+        rule.waitUntil(15_000) { exists("Skip") || exists("Smart Download Manager") }
+        if (exists("Skip")) rule.onAllNodesWithText("Skip").onFirst().performClick()
+        rule.waitUntil(15_000) { existsExact("Downloads") }
+        rule.enableAccessibilityChecks()
+        rule.waitForIdle()
+        rule.onRoot().tryPerformAccessibilityChecks()
+        for ((tab, marker) in listOf("Downloads" to "Downloads", "Files" to "All files", "Settings" to "Appearance", "Browser" to "Browser")) {
+            rule.onAllNodesWithText(tab, substring = false).onFirst().performClick()
+            rule.waitUntil(5_000) { exists(marker) }
+            rule.waitForIdle()
+            rule.onRoot().tryPerformAccessibilityChecks()
+        }
+    }
+}

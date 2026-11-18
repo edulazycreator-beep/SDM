@@ -743,7 +743,7 @@ fun BrowserScreen(initialUrl: String? = null) {
                     text = { Text(if (ready > 0) "Download" else "Media") },
                     expanded = media.any { it.playing } || media.size == 1,
                     containerColor = if (ready > 0) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).semantics { contentDescription = "Detected media (${media.size})" },
+                    modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp).padding(bottom = com.sdm.downloadmanager.ui.snackbarLift()).semantics { contentDescription = "Detected media (${media.size})" },
                 )
             }
         }

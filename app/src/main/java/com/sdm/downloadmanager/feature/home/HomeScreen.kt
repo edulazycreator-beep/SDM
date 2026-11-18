@@ -1,5 +1,9 @@
 package com.sdm.downloadmanager.feature.home
 
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -169,20 +173,27 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
                     DashboardWidget.QUICK_ACTIONS -> item("actions") {
                         Column {
                             SectionHeader("Quick actions")
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(sp.s)) {
-                                AssistChip(onClick = { app.requestAdd(AddRequest(emptyList())) }, label = { Text("Quick download") }, leadingIcon = { Icon(Icons.Filled.Add, null) })
-                                AssistChip(onClick = app.pasteFromClipboard, label = { Text("Paste URL") }, leadingIcon = { Icon(Icons.Filled.ContentPaste, null) })
-                                AssistChip(onClick = { multiDialog = true }, label = { Text("Add multiple URLs") }, leadingIcon = { Icon(Icons.Filled.PlaylistAdd, null) })
-                                AssistChip(onClick = { app.nav.navigate(BrowserRoute()) }, label = { Text("Open browser") }, leadingIcon = { Icon(Icons.Filled.Language, null) })
-                                AssistChip(onClick = { app.nav.navigate(QueueRoute) }, label = { Text("Download queue") }, leadingIcon = { Icon(Icons.Filled.Queue, null) })
-                                AssistChip(onClick = { app.nav.navigate(AnalyticsRoute) }, label = { Text("Analytics") }, leadingIcon = { Icon(Icons.Filled.BarChart, null) })
+                            // Three primary actions; the rest stay one tap away in "More".
+                            Row(horizontalArrangement = Arrangement.spacedBy(sp.s), modifier = Modifier.fillMaxWidth()) {
+                                QuickAction("Paste link", Icons.Filled.ContentPaste, Modifier.weight(1f), primary = true, onClick = app.pasteFromClipboard)
+                                QuickAction("Browser", Icons.Filled.Language, Modifier.weight(1f)) { app.nav.navigate(BrowserRoute()) }
+                                QuickAction("Add", Icons.Filled.Add, Modifier.weight(1f)) { app.requestAdd(AddRequest(emptyList())) }
+                            }
+                            var more by remember { mutableStateOf(false) }
+                            Box {
+                                TextButton(onClick = { more = true }) { Text("More actions") }
+                                DropdownMenu(more, { more = false }) {
+                                    DropdownMenuItem(text = { Text("Add multiple URLs") }, leadingIcon = { Icon(Icons.Filled.PlaylistAdd, null) }, onClick = { more = false; multiDialog = true })
+                                    DropdownMenuItem(text = { Text("Download queue") }, leadingIcon = { Icon(Icons.Filled.Queue, null) }, onClick = { more = false; app.nav.navigate(QueueRoute) })
+                                    DropdownMenuItem(text = { Text("Analytics") }, leadingIcon = { Icon(Icons.Filled.BarChart, null) }, onClick = { more = false; app.nav.navigate(AnalyticsRoute) })
+                                }
                             }
                         }
                     }
                     DashboardWidget.RECENT -> {
                         item("recent-h") { SectionHeader("Recent activity") }
                         if (s.recent.isEmpty()) item("recent-empty") {
-                            Text("No downloads yet. Paste a link or open the browser to start.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text("No downloads yet. Paste a link, or open the browser and play a video.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         s.recent.forEach { d ->
                             item("r${d.id}") { RecentRow(d, s.live[d.id]) { app.nav.navigate(DetailsRoute(d.id)) } }
@@ -230,4 +241,16 @@ fun MultiUrlDialog(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
         confirmButton = { TextButton(enabled = count > 0, onClick = { onSubmit(text); onDismiss() }) { Text("Continue") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+@Composable
+private fun QuickAction(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier, primary: Boolean = false, onClick: () -> Unit) {
+    val colors = if (primary) CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer) else CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+    Card(onClick = onClick, modifier = modifier.heightIn(min = 72.dp), colors = colors) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, null)
+            Spacer(Modifier.height(4.dp))
+            Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        }
+    }
 }

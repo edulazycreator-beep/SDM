@@ -2,6 +2,16 @@ package com.sdm.downloadmanager.feature.downloads
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.rememberCoroutineScope
+import com.sdm.downloadmanager.ui.MediaThumbnail
+import com.sdm.downloadmanager.ui.BrowserRoute
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -90,13 +100,18 @@ enum class DownloadFilter(val label: String, val states: Set<DownloadState>?) {
 
 enum class DownloadSort(val label: String) { NEWEST("Newest"), OLDEST("Oldest"), NAME("Name"), SIZE("Size"), PROGRESS("Progress") }
 
-data class DownloadsUi(val items: List<Download> = emptyList(), val live: Map<Long, LiveProgress> = emptyMap(), val filter: DownloadFilter = DownloadFilter.ALL, val sort: DownloadSort = DownloadSort.NEWEST, val selected: Set<Long> = emptySet())
+data class DownloadsUi(val items: List<Download> = emptyList(), val live: Map<Long, LiveProgress> = emptyMap(), val filter: DownloadFilter = DownloadFilter.ALL, val sort: DownloadSort = DownloadSort.NEWEST, val selected: Set<Long> = emptySet(), val hidden: Set<Long> = emptySet())
 
 @HiltViewModel
 class DownloadsViewModel @Inject constructor(private val repo: DownloadRepository) : ViewModel() {
     private val filter = MutableStateFlow(DownloadFilter.ALL)
     private val sort = MutableStateFlow(DownloadSort.NEWEST)
     private val selected = MutableStateFlow<Set<Long>>(emptySet())
+    /** Swiped away, waiting for the Undo snackbar to time out before being deleted. */
+    private val hiddenIds = MutableStateFlow<Set<Long>>(emptySet())
+
+    fun hide(id: Long) { hiddenIds.value += id }
+    fun unhide(id: Long) { hiddenIds.value -= id }
 
     val ui = combine(repo.downloads, repo.live, filter, sort, selected) { all, live, f, s, sel ->
         val filtered = all.filter { f.states == null || it.state in f.states }
@@ -108,7 +123,7 @@ class DownloadsViewModel @Inject constructor(private val repo: DownloadRepositor
             DownloadSort.PROGRESS -> filtered.sortedByDescending { it.progressPercent }
         }
         DownloadsUi(sorted, live, f, s, sel.intersect(all.map { it.id }.toSet()))
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadsUi())
+    }.combine(hiddenIds) { ui, h -> ui.copy(hidden = h) }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DownloadsUi())
 
     fun setFilter(f: DownloadFilter) { filter.value = f }
     fun setSort(s: DownloadSort) { sort.value = s }
@@ -120,7 +135,7 @@ class DownloadsViewModel @Inject constructor(private val repo: DownloadRepositor
     fun resume(id: Long) = viewModelScope.launch { repo.resume(id) }
     fun cancel(id: Long) = viewModelScope.launch { repo.cancel(id) }
     fun restart(id: Long) = viewModelScope.launch { repo.restart(id) }
-    fun delete(ids: Collection<Long>, files: Boolean) = viewModelScope.launch { repo.delete(ids, files); clearSelection() }
+    fun delete(ids: Collection<Long>, files: Boolean) = viewModelScope.launch { repo.delete(ids, files); hiddenIds.value -= ids.toSet(); clearSelection() }
     fun batch(action: (Long) -> Unit) { selected.value.forEach(action); clearSelection() }
     fun pauseAll() = viewModelScope.launch { repo.pauseAll() }
     fun resumeAll() = viewModelScope.launch { repo.resumeAll() }
@@ -138,6 +153,7 @@ fun DownloadsScreen(vm: DownloadsViewModel = hiltViewModel()) {
     var confirmDelete by remember { mutableStateOf<Collection<Long>?>(null) }
     var deleteFiles by remember { mutableStateOf(false) }
     val selecting = ui.selected.isNotEmpty()
+    val scope = rememberCoroutineScope()
     SdmScaffold(
         title = if (selecting) "${ui.selected.size} selected" else "Downloads",
         onBack = if (selecting) vm::clearSelection else null,
@@ -173,14 +189,28 @@ fun DownloadsScreen(vm: DownloadsViewModel = hiltViewModel()) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = sp.l), horizontalArrangement = Arrangement.spacedBy(sp.s)) {
                 DownloadFilter.entries.forEach { f -> FilterChip(selected = ui.filter == f, onClick = { vm.setFilter(f) }, label = { Text(f.label) }) }
             }
-            if (ui.items.isEmpty()) {
-                EmptyState(Icons.Filled.Download, "No downloads here", if (ui.filter == DownloadFilter.ALL) "Tap + to add a link, paste from the clipboard or download from the browser." else "Nothing matches this filter.")
+            if (ui.items.none { it.id !in ui.hidden }) {
+                if (ui.filter == DownloadFilter.ALL) EmptyState(Icons.Filled.Download, "No downloads yet", "Paste a link, or open the browser and play a video or tap a download link.") {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = app.pasteFromClipboard) { Text("Paste link") }
+                        OutlinedButton(onClick = { app.nav.navigate(BrowserRoute()) }) { Text("Open browser") }
+                    }
+                } else EmptyState(Icons.Filled.Download, "Nothing here", "No downloads match \"${ui.filter.label}\".") {
+                    OutlinedButton(onClick = { vm.setFilter(DownloadFilter.ALL) }) { Text("Show all") }
+                }
             } else {
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 88.dp)) {
-                    items(ui.items, key = { it.id }) { d ->
+                    items(ui.items.filter { it.id !in ui.hidden }, key = { it.id }) { d ->
                         val dismiss = rememberSwipeToDismissBoxState(confirmValueChange = { v ->
                             when (v) {
-                                SwipeToDismissBoxValue.EndToStart -> { confirmDelete = listOf(d.id); false }
+                                SwipeToDismissBoxValue.EndToStart -> {
+                                    vm.hide(d.id)
+                                    scope.launch {
+                                        val r = app.snackbar.showSnackbar("Removed ${d.fileName.take(40)}", actionLabel = "Undo", duration = SnackbarDuration.Short)
+                                        if (r == SnackbarResult.ActionPerformed) vm.unhide(d.id) else vm.delete(listOf(d.id), false)
+                                    }
+                                    false
+                                }
                                 SwipeToDismissBoxValue.StartToEnd -> { if (d.state.isActive || d.state == DownloadState.QUEUED) vm.pause(d.id) else vm.resume(d.id); false }
                                 else -> false
                             }
@@ -236,23 +266,33 @@ fun DownloadRow(
             Modifier.fillMaxWidth().combinedClickable(onClick = onClick, onLongClick = onLongClick).padding(horizontal = sp.l, vertical = sp.listItemVertical),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (selecting) Checkbox(selected, { onClick() }) else CategoryBadge(d.category)
+            if (selecting) Checkbox(selected, { onClick() })
+            else if (d.state == DownloadState.COMPLETED) MediaThumbnail(d.destinationUri, d.category)
+            else CategoryBadge(d.category)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text(d.fileName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.MiddleEllipsis)
-                Spacer(Modifier.height(2.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (d.isStream) {
+                        Surface(shape = RoundedCornerShape(4.dp), color = MaterialTheme.colorScheme.tertiaryContainer, modifier = Modifier.padding(end = 6.dp)) {
+                            Text(listOfNotNull(d.streamType, d.streamLabel?.substringBefore(" ·")).joinToString(" · "), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onTertiaryContainer, modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                        }
+                    }
+                    Text(d.fileName, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.MiddleEllipsis)
+                }
+                Spacer(Modifier.height(4.dp))
                 val done = live?.downloadedBytes ?: d.downloadedBytes
                 val total = live?.totalBytes ?: d.totalBytes
-                if (d.state != DownloadState.COMPLETED) {
+                if (d.state != DownloadState.COMPLETED && d.state != DownloadState.CANCELLED) {
                     AnimatedProgress(if (total != null && total > 0) done.toFloat() / total else if (d.state.isActive) null else 0f)
                     Spacer(Modifier.height(4.dp))
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    StatusChip(d.state, labelOverride = holdLabel(d))
-                    Spacer(Modifier.width(8.dp))
-                    Text(detailLine(d, live), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    if (d.state != DownloadState.COMPLETED) { StatusChip(d.state, labelOverride = holdLabel(d)); Spacer(Modifier.width(8.dp)) }
+                    Text(
+                        detailLine(d, live), style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                        color = if (d.state == DownloadState.FAILED) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                Text("${d.host ?: ""} → ${d.destinationLabel}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             if (!selecting) {
                 when {
@@ -264,7 +304,7 @@ fun DownloadRow(
                     IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Actions") }
                     DropdownMenu(menu, { menu = false }) {
                         if (!d.state.isTerminal) DropdownMenuItem(text = { Text("Cancel") }, leadingIcon = { Icon(Icons.Filled.Close, null) }, onClick = { menu = false; onCancel() })
-                        DropdownMenuItem(text = { Text("Restart") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = { menu = false; onRestart() })
+                        DropdownMenuItem(text = { Text(if (d.state == DownloadState.COMPLETED) "Download again" else "Restart from the beginning") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = { menu = false; onRestart() })
                         DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Color.Unspecified) }, onClick = { menu = false; onDelete() })
                     }
                 }
@@ -287,13 +327,15 @@ fun holdLabel(d: Download): String? = if (d.state != DownloadState.QUEUED) null 
 fun detailLine(d: Download, live: LiveProgress?): String {
     val total = live?.totalBytes ?: d.totalBytes
     val done = live?.downloadedBytes ?: d.downloadedBytes
+    val approx = if (d.isStream && d.state != DownloadState.COMPLETED) "~" else ""
     return when {
         live != null -> buildString {
-            append("${Formatters.bytes(done)} / ${Formatters.bytes(total)} · ${Formatters.percent(done, total)}% · ${Formatters.speed(live.speedBps)}")
+            append("${Formatters.percent(done, total)}% · ${Formatters.speed(live.speedBps)}")
             live.etaSeconds?.let { append(" · ${Formatters.duration(it)} left") }
+            append(" · ${Formatters.bytes(done)} / $approx${Formatters.bytes(total)}")
         }
-        d.state == DownloadState.COMPLETED -> "${Formatters.bytes(total)} · avg ${Formatters.speed(d.averageSpeedBps)}"
-        d.state == DownloadState.FAILED -> d.errorCode?.title ?: "Failed"
-        else -> "${Formatters.bytes(done)} / ${Formatters.bytes(total)} · ${Formatters.percent(done, total)}%"
+        d.state == DownloadState.COMPLETED -> "${Formatters.bytes(total)} · ${Formatters.relativeDate(d.completedAt ?: d.createdAt)} · avg ${Formatters.speed(d.averageSpeedBps)}"
+        d.state == DownloadState.FAILED -> (d.errorCode?.title ?: "Failed") + " · tap for details"
+        else -> "${Formatters.bytes(done)} / $approx${Formatters.bytes(total)} · ${Formatters.percent(done, total)}%"
     }
 }

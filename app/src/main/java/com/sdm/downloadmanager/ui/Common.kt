@@ -1,5 +1,8 @@
 package com.sdm.downloadmanager.ui
 
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Box
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -45,10 +48,17 @@ fun SdmScaffold(
                 scrollBehavior = scroll,
             )
         },
-        floatingActionButton = floatingActionButton,
+        floatingActionButton = { Box(Modifier.padding(bottom = snackbarLift())) { floatingActionButton() } },
         bottomBar = bottomBar,
         content = content,
     )
+}
+
+/** Space to move floating buttons up while the app snackbar is showing, so it never covers them. */
+@Composable
+fun snackbarLift(): androidx.compose.ui.unit.Dp {
+    val showing = LocalAppActions.current.snackbar.currentSnackbarData != null
+    return androidx.compose.animation.core.animateDpAsState(if (showing) 64.dp else 0.dp, label = "snackbarLift").value
 }
 
 fun Context.copyToClipboard(label: String, text: String) {
