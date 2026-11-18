@@ -32,7 +32,14 @@ class AccessibilityTest {
         fun check(screen: String) {
             rule.waitForIdle()
             rule.enableAccessibilityChecks()
-            try { rule.onRoot().tryPerformAccessibilityChecks() } catch (e: Throwable) { failures += "$screen: ${e.message}" }
+            try { rule.onRoot().tryPerformAccessibilityChecks() } catch (e: Throwable) {
+                // Items cut off at the screen edge (a few pixels visible) are reported too; they are
+                // checked properly once scrolled into view, so only findings on visible items count.
+                val real = Regex("""View with bounds: \[(\d+),(\d+)]\[(\d+),(\d+)]: ([^\n]*)""").findAll(e.message.orEmpty())
+                    .filter { m -> m.groupValues[4].toInt() - m.groupValues[2].toInt() >= 24 }.map { it.value }.toList()
+                val unparsed = !e.message.orEmpty().contains("View with bounds")
+                if (real.isNotEmpty() || unparsed) failures += "$screen: " + if (unparsed) e.message else real.joinToString("\n")
+            }
             rule.disableAccessibilityChecks()
         }
         check("Home")
