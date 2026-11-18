@@ -1,5 +1,7 @@
 package com.sdm.downloadmanager.feature.player
 
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.Intent
@@ -81,20 +83,20 @@ class PlayerActivity : ComponentActivity() {
         }
         setContent {
             MaterialTheme {
+                var resize by remember { mutableIntStateOf(androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT) }
                 Box(Modifier.fillMaxSize().background(Color.Black)) {
                     AndroidView(factory = { ctx ->
                         PlayerView(ctx).apply {
                             layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
                             this.player = p
-                            setShowSubtitleButton(true)
+                            useController = false
                             keepScreenOn = true
                         }
-                    }, update = { it.useController = !inPip }, modifier = Modifier.fillMaxSize())
-                    if (!inPip) Row(Modifier.align(Alignment.TopStart).safeDrawingPadding().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(onClick = { finish() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = Color.White) }
-                        Text(title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                        if (Build.VERSION.SDK_INT >= 26) IconButton(onClick = { enterPip() }) { Icon(Icons.Outlined.PictureInPictureAlt, "Picture in picture", tint = Color.White) }
-                    }
+                    }, update = { it.resizeMode = resize }, modifier = Modifier.fillMaxSize())
+                    PlayerControls(
+                        player = p, title = title, inPip = inPip, resizeMode = resize, onResizeMode = { resize = it },
+                        onBack = { finish() }, onPip = if (Build.VERSION.SDK_INT >= 26) ({ enterPip() }) else null,
+                    )
                 }
             }
         }
