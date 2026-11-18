@@ -10,7 +10,7 @@ val ciKeystore = System.getenv("SDM_KEYSTORE_PATH")
 
 android {
     namespace = "com.sdm.downloadmanager"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.sdm.downloadmanager"
