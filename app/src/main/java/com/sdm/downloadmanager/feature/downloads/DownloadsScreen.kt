@@ -27,16 +27,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Sort
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -159,19 +159,19 @@ fun DownloadsScreen(vm: DownloadsViewModel = hiltViewModel()) {
         onBack = if (selecting) vm::clearSelection else null,
         actions = {
             if (selecting) {
-                IconButton(onClick = { vm.selectAll(ui.items.map { it.id }) }) { Icon(Icons.Filled.SelectAll, "Select all") }
-                IconButton(onClick = { vm.batch { vm.resume(it) } }) { Icon(Icons.Filled.PlayArrow, "Resume selected") }
-                IconButton(onClick = { vm.batch { vm.pause(it) } }) { Icon(Icons.Filled.Pause, "Pause selected") }
-                IconButton(onClick = { confirmDelete = ui.selected }) { Icon(Icons.Filled.Delete, "Delete selected") }
+                IconButton(onClick = { vm.selectAll(ui.items.map { it.id }) }) { Icon(Icons.Outlined.SelectAll, "Select all") }
+                IconButton(onClick = { vm.batch { vm.resume(it) } }) { Icon(Icons.Outlined.PlayArrow, "Resume selected") }
+                IconButton(onClick = { vm.batch { vm.pause(it) } }) { Icon(Icons.Outlined.Pause, "Pause selected") }
+                IconButton(onClick = { confirmDelete = ui.selected }) { Icon(Icons.Outlined.Delete, "Delete selected") }
             } else {
                 Box {
-                    IconButton(onClick = { sortMenu = true }) { Icon(Icons.Filled.Sort, "Sort") }
+                    IconButton(onClick = { sortMenu = true }) { Icon(Icons.Outlined.Sort, "Sort") }
                     DropdownMenu(sortMenu, { sortMenu = false }) {
                         DownloadSort.entries.forEach { s -> DropdownMenuItem(text = { Text(s.label + if (s == ui.sort) "  ✓" else "") }, onClick = { vm.setSort(s); sortMenu = false }) }
                     }
                 }
                 Box {
-                    IconButton(onClick = { overflow = true }) { Icon(Icons.Filled.MoreVert, "More") }
+                    IconButton(onClick = { overflow = true }) { Icon(Icons.Outlined.MoreVert, "More") }
                     DropdownMenu(overflow, { overflow = false }) {
                         DropdownMenuItem(text = { Text("Download queue") }, onClick = { overflow = false; app.nav.navigate(QueueRoute) })
                         DropdownMenuItem(text = { Text("Pause all") }, onClick = { overflow = false; vm.pauseAll() })
@@ -182,7 +182,7 @@ fun DownloadsScreen(vm: DownloadsViewModel = hiltViewModel()) {
             }
         },
         floatingActionButton = {
-            if (!selecting) FloatingActionButton(onClick = { app.requestAdd(AddRequest(emptyList())) }) { Icon(Icons.Filled.Add, "Add download") }
+            if (!selecting) FloatingActionButton(onClick = { app.requestAdd(AddRequest(emptyList())) }) { Icon(Icons.Outlined.Add, "Add download") }
         },
     ) { padding ->
         Column(Modifier.padding(padding)) {
@@ -190,12 +190,12 @@ fun DownloadsScreen(vm: DownloadsViewModel = hiltViewModel()) {
                 DownloadFilter.entries.forEach { f -> FilterChip(selected = ui.filter == f, onClick = { vm.setFilter(f) }, label = { Text(f.label) }) }
             }
             if (ui.items.none { it.id !in ui.hidden }) {
-                if (ui.filter == DownloadFilter.ALL) EmptyState(Icons.Filled.Download, "No downloads yet", "Paste a link, or open the browser and play a video or tap a download link.") {
+                if (ui.filter == DownloadFilter.ALL) EmptyState(Icons.Outlined.Download, "No downloads yet", "Paste a link, or open the browser and play a video or tap a download link.") {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = app.pasteFromClipboard) { Text("Paste link") }
                         OutlinedButton(onClick = { app.nav.navigate(BrowserRoute()) }) { Text("Open browser") }
                     }
-                } else EmptyState(Icons.Filled.Download, "Nothing here", "No downloads match \"${ui.filter.label}\".") {
+                } else EmptyState(Icons.Outlined.Download, "Nothing here", "No downloads match \"${ui.filter.label}\".") {
                     OutlinedButton(onClick = { vm.setFilter(DownloadFilter.ALL) }) { Text("Show all") }
                 }
             } else {
@@ -218,7 +218,7 @@ fun DownloadsScreen(vm: DownloadsViewModel = hiltViewModel()) {
                         SwipeToDismissBox(dismiss, backgroundContent = {
                             val left = dismiss.dismissDirection == SwipeToDismissBoxValue.StartToEnd
                             Row(Modifier.fillMaxSize().padding(horizontal = 24.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = if (left) Arrangement.Start else Arrangement.End) {
-                                Icon(if (left) Icons.Filled.Pause else Icons.Filled.Delete, null, tint = if (left) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
+                                Icon(if (left) Icons.Outlined.Pause else Icons.Outlined.Delete, null, tint = if (left) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error)
                             }
                         }) {
                             DownloadRow(
@@ -296,16 +296,16 @@ fun DownloadRow(
             }
             if (!selecting) {
                 when {
-                    d.state.isActive || d.state == DownloadState.QUEUED || d.state == DownloadState.WAITING_FOR_NETWORK -> IconButton(onClick = onPause) { Icon(Icons.Filled.Pause, "Pause") }
-                    d.state == DownloadState.PAUSED || d.state == DownloadState.FAILED -> IconButton(onClick = onResume) { Icon(if (d.state == DownloadState.FAILED) Icons.Filled.Refresh else Icons.Filled.PlayArrow, "Resume") }
+                    d.state.isActive || d.state == DownloadState.QUEUED || d.state == DownloadState.WAITING_FOR_NETWORK -> IconButton(onClick = onPause) { Icon(Icons.Outlined.Pause, "Pause") }
+                    d.state == DownloadState.PAUSED || d.state == DownloadState.FAILED -> IconButton(onClick = onResume) { Icon(if (d.state == DownloadState.FAILED) Icons.Outlined.Refresh else Icons.Outlined.PlayArrow, "Resume") }
                     else -> Unit
                 }
                 Box {
-                    IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Actions") }
+                    IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "Actions") }
                     DropdownMenu(menu, { menu = false }) {
-                        if (!d.state.isTerminal) DropdownMenuItem(text = { Text("Cancel") }, leadingIcon = { Icon(Icons.Filled.Close, null) }, onClick = { menu = false; onCancel() })
-                        DropdownMenuItem(text = { Text(if (d.state == DownloadState.COMPLETED) "Download again" else "Restart from the beginning") }, leadingIcon = { Icon(Icons.Filled.Refresh, null) }, onClick = { menu = false; onRestart() })
-                        DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Filled.Delete, null, tint = Color.Unspecified) }, onClick = { menu = false; onDelete() })
+                        if (!d.state.isTerminal) DropdownMenuItem(text = { Text("Cancel") }, leadingIcon = { Icon(Icons.Outlined.Close, null) }, onClick = { menu = false; onCancel() })
+                        DropdownMenuItem(text = { Text(if (d.state == DownloadState.COMPLETED) "Download again" else "Restart from the beginning") }, leadingIcon = { Icon(Icons.Outlined.Refresh, null) }, onClick = { menu = false; onRestart() })
+                        DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Outlined.Delete, null, tint = Color.Unspecified) }, onClick = { menu = false; onDelete() })
                     }
                 }
             }

@@ -1,6 +1,6 @@
 package com.sdm.downloadmanager.ui
 
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Row
@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.Settings
 import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -87,11 +87,11 @@ val LocalAppActions = staticCompositionLocalOf<AppActions> { error("AppActions n
 private data class TopLevel(val label: String, val icon: ImageVector, val route: Any, val matches: (androidx.navigation.NavDestination) -> Boolean)
 
 private val topLevels = listOf(
-    TopLevel("Home", Icons.Filled.Home, HomeRoute) { it.hasRoute(HomeRoute::class) },
-    TopLevel("Downloads", Icons.Filled.Download, DownloadsRoute) { it.hasRoute(DownloadsRoute::class) },
-    TopLevel("Browser", Icons.Filled.Language, BrowserRoute()) { it.hasRoute(BrowserRoute::class) },
-    TopLevel("Files", Icons.Filled.Folder, FilesRoute) { it.hasRoute(FilesRoute::class) },
-    TopLevel("Settings", Icons.Filled.Settings, SettingsRoute) { it.hasRoute(SettingsRoute::class) },
+    TopLevel("Home", Icons.Outlined.Home, HomeRoute) { it.hasRoute(HomeRoute::class) },
+    TopLevel("Downloads", Icons.Outlined.Download, DownloadsRoute) { it.hasRoute(DownloadsRoute::class) },
+    TopLevel("Browser", Icons.Outlined.Language, BrowserRoute()) { it.hasRoute(BrowserRoute::class) },
+    TopLevel("Files", Icons.Outlined.Folder, FilesRoute) { it.hasRoute(FilesRoute::class) },
+    TopLevel("Settings", Icons.Outlined.Settings, SettingsRoute) { it.hasRoute(SettingsRoute::class) },
 )
 
 /** Provides the app language (device language unless chosen in Appearance); texts recompose when it changes. */
@@ -173,7 +173,7 @@ private fun SdmAppContent(vm: AppViewModel) {
                             // Own snackbar so the message and action are shown in the app language.
                             androidx.compose.material3.Snackbar(
                                 action = data.visuals.actionLabel?.let { label -> { androidx.compose.material3.TextButton(onClick = { data.performAction() }) { Text(label) } } },
-                                dismissAction = if (data.visuals.withDismissAction) { { androidx.compose.material3.IconButton(onClick = { data.dismiss() }) { Icon(Icons.Filled.Close, "Close") } } } else null,
+                                dismissAction = if (data.visuals.withDismissAction) { { androidx.compose.material3.IconButton(onClick = { data.dismiss() }) { Icon(Icons.Outlined.Close, "Close") } } } else null,
                             ) { Text(data.visuals.message) }
                         }
                     },

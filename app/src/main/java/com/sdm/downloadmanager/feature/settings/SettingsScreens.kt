@@ -23,19 +23,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Analytics
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.ImportExport
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.NetworkCheck
-import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Rule
-import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.outlined.Analytics
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.BugReport
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.ImportExport
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.NetworkCheck
+import androidx.compose.material.icons.outlined.Palette
+import androidx.compose.material.icons.outlined.Rule
+import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material3.FilterChip
 import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.material3.IconButton
@@ -71,6 +71,7 @@ import com.sdm.core.data.settings.ThemeMode
 import com.sdm.core.designsystem.component.InfoRow
 import com.sdm.core.designsystem.component.NavRow
 import com.sdm.core.designsystem.component.SectionHeader
+import com.sdm.core.designsystem.component.SettingsGroup
 import com.sdm.core.designsystem.component.SwitchRow
 import com.sdm.core.designsystem.theme.LocalSpacing
 import com.sdm.core.designsystem.theme.SdmColors
@@ -119,21 +120,25 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsState()
     val app = LocalAppActions.current
     SettingsPage("Settings", root = true) {
-        SectionHeader("General")
-        NavRow("Appearance", "${s.themeMode.name.lowercase().replaceFirstChar { it.uppercase() }} theme · ${if (s.density == LayoutDensity.COMPACT) "compact" else "comfortable"}", Icons.Filled.Palette) { app.nav.navigate(AppearanceRoute) }
-        NavRow("Downloads", "${s.defaultConnections} connections · ${s.maxConcurrent} at once · ${s.speedLimitProfile.label}", Icons.Filled.Download) { app.nav.navigate(DownloadSettingsRoute) }
-        NavRow("Network", "${s.networkPolicy.name.lowercase().replace('_', ' ')} · ${s.dnsMode.label}", Icons.Filled.NetworkCheck) { app.nav.navigate(NetworkSettingsRoute) }
-        SwitchRow("Detect copied links", s.clipboardDetection, { v -> vm.update { it.copy(clipboardDetection = v) } }, "Checks the clipboard only when SDM is open")
-        SectionHeader("Automation")
-        NavRow("Scheduler", "Profiles, operating hours and conditions", Icons.Filled.Schedule) { app.nav.navigate(SchedulerRoute) }
-        NavRow("Smart rules", "Automatic actions for files and network changes", Icons.Filled.Rule) { app.nav.navigate(RulesRoute) }
-        SectionHeader("Insights")
-        NavRow("Analytics and Speed Intelligence", "Statistics and connection recommendations", Icons.Filled.Analytics) { app.nav.navigate(AnalyticsRoute) }
-        NavRow("Storage analysis", null, Icons.Filled.Storage) { app.nav.navigate(StorageAnalysisRoute) }
-        NavRow("Diagnostics", "Errors, reports and performance", Icons.Filled.BugReport) { app.nav.navigate(DiagnosticsRoute) }
-        SectionHeader("Data")
-        NavRow("Import, export and backup", null, Icons.Filled.ImportExport) { app.nav.navigate(ImportExportRoute) }
-        NavRow("About SDM", "Version ${BuildConfig.VERSION_NAME}", Icons.Filled.Info) { app.nav.navigate(AboutRoute) }
+        SettingsGroup("General") {
+            NavRow("Appearance", "${s.themeMode.name.lowercase().replaceFirstChar { it.uppercase() }} theme · ${if (s.density == LayoutDensity.COMPACT) "Compact" else "Comfortable"}", Icons.Outlined.Palette) { app.nav.navigate(AppearanceRoute) }
+            NavRow("Downloads", "${s.defaultConnections} connections · ${s.maxConcurrent} at once · ${s.speedLimitProfile.label}", Icons.Outlined.Download) { app.nav.navigate(DownloadSettingsRoute) }
+            NavRow("Network", "${s.networkPolicy.name.lowercase().replace('_', ' ')} · ${s.dnsMode.label}", Icons.Outlined.NetworkCheck) { app.nav.navigate(NetworkSettingsRoute) }
+            SwitchRow("Detect copied links", s.clipboardDetection, { v -> vm.update { it.copy(clipboardDetection = v) } }, "Checks the clipboard only when SDM is open")
+        }
+        SettingsGroup("Automation") {
+            NavRow("Scheduler", "Profiles, operating hours and conditions", Icons.Outlined.Schedule) { app.nav.navigate(SchedulerRoute) }
+            NavRow("Smart rules", "Automatic actions for files and network changes", Icons.Outlined.Rule) { app.nav.navigate(RulesRoute) }
+        }
+        SettingsGroup("Insights") {
+            NavRow("Analytics and Speed Intelligence", "Statistics and connection recommendations", Icons.Outlined.Analytics) { app.nav.navigate(AnalyticsRoute) }
+            NavRow("Storage analysis", null, Icons.Outlined.Storage) { app.nav.navigate(StorageAnalysisRoute) }
+            NavRow("Diagnostics", "Errors, reports and performance", Icons.Outlined.BugReport) { app.nav.navigate(DiagnosticsRoute) }
+        }
+        SettingsGroup("Data") {
+            NavRow("Import, export and backup", null, Icons.Outlined.ImportExport) { app.nav.navigate(ImportExportRoute) }
+            NavRow("About SDM", "Version ${BuildConfig.VERSION_NAME}", Icons.Outlined.Info) { app.nav.navigate(AboutRoute) }
+        }
     }
 }
 
@@ -177,8 +182,8 @@ fun AppearanceScreen(vm: SettingsViewModel = hiltViewModel()) {
         ordered.forEach { w ->
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.weight(1f)) { SwitchRow(w.label, w in enabled, { on -> vm.update { st -> st.copy(dashboardWidgets = if (on) st.dashboardWidgets + w else st.dashboardWidgets - w) } }) }
-                IconButton(onClick = { vm.update { st -> st.copy(dashboardWidgets = st.dashboardWidgets.move(w, -1)) } }, enabled = w in enabled) { Icon(Icons.Filled.ArrowUpward, "Move up") }
-                IconButton(onClick = { vm.update { st -> st.copy(dashboardWidgets = st.dashboardWidgets.move(w, 1)) } }, enabled = w in enabled) { Icon(Icons.Filled.ArrowDownward, "Move down") }
+                IconButton(onClick = { vm.update { st -> st.copy(dashboardWidgets = st.dashboardWidgets.move(w, -1)) } }, enabled = w in enabled) { Icon(Icons.Outlined.ArrowUpward, "Move up") }
+                IconButton(onClick = { vm.update { st -> st.copy(dashboardWidgets = st.dashboardWidgets.move(w, 1)) } }, enabled = w in enabled) { Icon(Icons.Outlined.ArrowDownward, "Move down") }
             }
         }
     }
@@ -291,6 +296,6 @@ fun AboutScreen() {
         SectionHeader("Open-source components")
         Text("Built with AndroidX, Jetpack Compose, Media3, OkHttp, Apache Commons Net, JSch, libtorrent (libtorrent4j), Mozilla Readability and the StevenBlack/hosts list (MIT). Full list and licenses: docs/THIRD_PARTY_NOTICES.md in the source repository.", style = MaterialTheme.typography.bodySmall)
         TextButton(onClick = { ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) { Text("App info and permissions") }
-        Icon(Icons.Filled.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+        Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
     }
 }

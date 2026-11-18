@@ -2,7 +2,7 @@ package com.sdm.downloadmanager.feature.home
 
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.foundation.layout.heightIn
@@ -20,21 +20,21 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Language
-import androidx.compose.material.icons.filled.PauseCircle
-import androidx.compose.material.icons.filled.PlaylistAdd
-import androidx.compose.material.icons.filled.Queue
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SdStorage
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.material.icons.outlined.PauseCircle
+import androidx.compose.material.icons.outlined.PlaylistAdd
+import androidx.compose.material.icons.outlined.Queue
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SdStorage
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Wifi
+import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Card
@@ -124,7 +124,7 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
     var multiDialog by remember { mutableStateOf(false) }
     SdmScaffold(
         title = "Smart Download Manager",
-        actions = { IconButton(onClick = { app.nav.navigate(SearchRoute) }) { Icon(Icons.Filled.Search, "Search") } },
+        actions = { IconButton(onClick = { app.nav.navigate(SearchRoute) }) { Icon(Icons.Outlined.Search, "Search") } },
     ) { padding ->
         LazyColumn(Modifier.padding(padding).padding(horizontal = sp.l), verticalArrangement = Arrangement.spacedBy(sp.m)) {
             s.widgets.forEach { w ->
@@ -132,26 +132,26 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
                     DashboardWidget.STATUS -> item("status") {
                         val status = LocalStatusColors.current
                         Row(horizontalArrangement = Arrangement.spacedBy(sp.s)) {
-                            StatTile("Active", s.active.toString(), Modifier.weight(1f), Icons.Filled.Download, onClick = { app.nav.navigate(QueueRoute) })
-                            StatTile("Completed", (s.counts[DownloadState.COMPLETED] ?: 0).toString(), Modifier.weight(1f), Icons.Filled.CheckCircle, status.success)
+                            StatTile("Active", s.active.toString(), Modifier.weight(1f), Icons.Outlined.Download, onClick = { app.nav.navigate(QueueRoute) })
+                            StatTile("Completed", (s.counts[DownloadState.COMPLETED] ?: 0).toString(), Modifier.weight(1f), Icons.Outlined.CheckCircle, status.success)
                         }
                         Spacer(Modifier.height(sp.s))
                         Row(horizontalArrangement = Arrangement.spacedBy(sp.s)) {
-                            StatTile("Paused", ((s.counts[DownloadState.PAUSED] ?: 0) + (s.counts[DownloadState.WAITING_FOR_NETWORK] ?: 0)).toString(), Modifier.weight(1f), Icons.Filled.PauseCircle, status.warning)
-                            StatTile("Failed", (s.counts[DownloadState.FAILED] ?: 0).toString(), Modifier.weight(1f), Icons.Filled.Error, status.error)
+                            StatTile("Paused", ((s.counts[DownloadState.PAUSED] ?: 0) + (s.counts[DownloadState.WAITING_FOR_NETWORK] ?: 0)).toString(), Modifier.weight(1f), Icons.Outlined.PauseCircle, status.warning)
+                            StatTile("Failed", (s.counts[DownloadState.FAILED] ?: 0).toString(), Modifier.weight(1f), Icons.Outlined.Error, status.error)
                         }
                     }
                     DashboardWidget.SPEED -> item("speed") {
                         Row(horizontalArrangement = Arrangement.spacedBy(sp.s)) {
-                            StatTile("Overall speed", Formatters.speed(s.speed), Modifier.weight(1f), Icons.Filled.Speed, onClick = { app.nav.navigate(AnalyticsRoute) })
-                            StatTile("Total downloaded", Formatters.bytes(s.completedBytes), Modifier.weight(1f), Icons.Filled.BarChart)
+                            StatTile("Overall speed", Formatters.speed(s.speed), Modifier.weight(1f), Icons.Outlined.Speed, onClick = { app.nav.navigate(AnalyticsRoute) })
+                            StatTile("Total downloaded", Formatters.bytes(s.completedBytes), Modifier.weight(1f), Icons.Outlined.BarChart)
                         }
                     }
                     DashboardWidget.STORAGE -> item("storage") {
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                             Column(Modifier.padding(sp.m)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Filled.SdStorage, null, tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.Outlined.SdStorage, null, tint = MaterialTheme.colorScheme.primary)
                                     Spacer(Modifier.width(8.dp))
                                     Text("Available storage", style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
                                     Text("${Formatters.bytes(s.storage.freeBytes)} free of ${Formatters.bytes(s.storage.totalBytes)}", style = MaterialTheme.typography.bodySmall)
@@ -164,7 +164,7 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
                     DashboardWidget.NETWORK -> item("network") {
                         Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                             Row(Modifier.fillMaxWidth().padding(sp.m), verticalAlignment = Alignment.CenterVertically) {
-                                Icon(if (s.network.connected) Icons.Filled.Wifi else Icons.Filled.WifiOff, null, tint = if (s.network.connected) LocalStatusColors.current.success else LocalStatusColors.current.error)
+                                Icon(if (s.network.connected) Icons.Outlined.Wifi else Icons.Outlined.WifiOff, null, tint = if (s.network.connected) LocalStatusColors.current.success else LocalStatusColors.current.error)
                                 Spacer(Modifier.width(8.dp))
                                 Column(Modifier.weight(1f)) {
                                     Text("Network", style = MaterialTheme.typography.labelLarge)
@@ -178,18 +178,18 @@ fun HomeScreen(vm: HomeViewModel = hiltViewModel()) {
                             SectionHeader("Quick actions")
                             // Three primary actions; the rest stay one tap away in "More".
                             Row(horizontalArrangement = Arrangement.spacedBy(sp.s), modifier = Modifier.fillMaxWidth()) {
-                                QuickAction("Paste link", Icons.Filled.ContentPaste, Modifier.weight(1f), primary = true, onClick = app.pasteFromClipboard)
-                                QuickAction("Browser", Icons.Filled.Language, Modifier.weight(1f)) { app.nav.navigate(BrowserRoute()) }
-                                QuickAction("Add", Icons.Filled.Add, Modifier.weight(1f)) { app.requestAdd(AddRequest(emptyList())) }
+                                QuickAction("Paste link", Icons.Outlined.ContentPaste, Modifier.weight(1f), primary = true, onClick = app.pasteFromClipboard)
+                                QuickAction("Browser", Icons.Outlined.Language, Modifier.weight(1f)) { app.nav.navigate(BrowserRoute()) }
+                                QuickAction("Add", Icons.Outlined.Add, Modifier.weight(1f)) { app.requestAdd(AddRequest(emptyList())) }
                             }
                             var more by remember { mutableStateOf(false) }
                             Box {
                                 TextButton(onClick = { more = true }) { Text("More actions") }
                                 DropdownMenu(more, { more = false }) {
-                                    DropdownMenuItem(text = { Text("Add multiple URLs") }, leadingIcon = { Icon(Icons.Filled.PlaylistAdd, null) }, onClick = { more = false; multiDialog = true })
-                                    DropdownMenuItem(text = { Text("Download queue") }, leadingIcon = { Icon(Icons.Filled.Queue, null) }, onClick = { more = false; app.nav.navigate(QueueRoute) })
-                                    DropdownMenuItem(text = { Text("Send links from a computer") }, leadingIcon = { Icon(Icons.Filled.Computer, null) }, onClick = { more = false; app.nav.navigate(com.sdm.downloadmanager.ui.LanReceiveRoute) })
-                                    DropdownMenuItem(text = { Text("Analytics") }, leadingIcon = { Icon(Icons.Filled.BarChart, null) }, onClick = { more = false; app.nav.navigate(AnalyticsRoute) })
+                                    DropdownMenuItem(text = { Text("Add multiple URLs") }, leadingIcon = { Icon(Icons.Outlined.PlaylistAdd, null) }, onClick = { more = false; multiDialog = true })
+                                    DropdownMenuItem(text = { Text("Download queue") }, leadingIcon = { Icon(Icons.Outlined.Queue, null) }, onClick = { more = false; app.nav.navigate(QueueRoute) })
+                                    DropdownMenuItem(text = { Text("Send links from a computer") }, leadingIcon = { Icon(Icons.Outlined.Computer, null) }, onClick = { more = false; app.nav.navigate(com.sdm.downloadmanager.ui.LanReceiveRoute) })
+                                    DropdownMenuItem(text = { Text("Analytics") }, leadingIcon = { Icon(Icons.Outlined.BarChart, null) }, onClick = { more = false; app.nav.navigate(AnalyticsRoute) })
                                 }
                             }
                         }

@@ -1,5 +1,6 @@
 package com.sdm.downloadmanager.feature.browser
 
+import androidx.compose.foundation.shape.RoundedCornerShape
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.MutableContextWrapper
@@ -24,8 +25,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.filled.FullscreenExit
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.outlined.FullscreenExit
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -58,16 +59,16 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.icons.filled.Tab
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material.icons.outlined.Tab
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -795,21 +796,27 @@ fun BrowserScreen(initialUrl: String? = null) {
         Surface(tonalElevation = 2.dp) {
             Column {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { vm.back() }, enabled = tab?.canGoBack == true) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
                     if (tab?.isPrivate == true) Text("Private", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(start = 6.dp))
                     OutlinedTextField(
                         address, { address = it }, Modifier.weight(1f).padding(4.dp), singleLine = true,
                         placeholder = { Text("Search or enter address") },
-                        leadingIcon = if (tab?.secure == true) { { Icon(Icons.Filled.Lock, "Secure connection") } } else null,
+                        leadingIcon = if (tab?.secure == true) { { Icon(Icons.Outlined.Lock, "Secure connection", modifier = Modifier.size(18.dp)) } } else null,
+                        trailingIcon = { IconButton(onClick = { vm.reload() }) { Icon(Icons.Outlined.Refresh, "Refresh") } },
+                        shape = RoundedCornerShape(24.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Go),
                         keyboardActions = KeyboardActions(onGo = { vm.load(address) }),
                         textStyle = MaterialTheme.typography.bodyMedium,
                     )
                     IconButton(onClick = { tabsDialog = true }) {
-                        BadgedBox(badge = { Badge { Text(ui.tabs.size.toString()) } }) { Icon(Icons.Filled.Tab, "Tabs") }
+                        BadgedBox(badge = { Badge { Text(ui.tabs.size.toString()) } }) { Icon(Icons.Outlined.Tab, "Tabs") }
                     }
                     Box {
-                        IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Browser menu") }
+                        IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "Browser menu") }
                         DropdownMenu(menu, { menu = false }) {
+                            DropdownMenuItem(text = { Text("Forward") }, enabled = tab?.canGoForward == true, leadingIcon = { Icon(Icons.AutoMirrored.Outlined.ArrowForward, null) }, onClick = { menu = false; vm.forward() })
+                            DropdownMenuItem(text = { Text(if (bookmarked) "Remove bookmark" else "Bookmark") }, enabled = tab?.url?.startsWith("http") == true, leadingIcon = { Icon(if (bookmarked) Icons.Filled.Star else Icons.Outlined.StarBorder, null) }, onClick = { menu = false; vm.toggleBookmark() })
+                            HorizontalDivider()
                             DropdownMenuItem(text = { Text("New tab") }, onClick = { menu = false; vm.newTab() })
                             DropdownMenuItem(text = { Text("New private tab") }, enabled = vm.privateSupported, onClick = { menu = false; vm.newTab(private = true) })
                             DropdownMenuItem(text = { Text("Bookmarks") }, onClick = { menu = false; app.nav.navigate(BookmarksRoute) })
@@ -825,13 +832,6 @@ fun BrowserScreen(initialUrl: String? = null) {
                         }
                     }
                 }
-                // Full 48 dp touch targets for the toolbar buttons (accessibility).
-                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { vm.back() }, enabled = tab?.canGoBack == true, modifier = Modifier.size(48.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                    IconButton(onClick = { vm.forward() }, enabled = tab?.canGoForward == true, modifier = Modifier.size(48.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "Forward") }
-                    IconButton(onClick = { vm.reload() }, modifier = Modifier.size(48.dp)) { Icon(Icons.Filled.Refresh, "Refresh") }
-                    IconButton(onClick = { vm.toggleBookmark() }, enabled = tab?.url?.startsWith("http") == true, modifier = Modifier.size(48.dp)) { Icon(if (bookmarked) Icons.Filled.Star else Icons.Filled.StarBorder, "Bookmark") }
-                }
                 if ((tab?.progress ?: 100) < 100) LinearProgressIndicator(progress = { (tab?.progress ?: 0) / 100f }, modifier = Modifier.fillMaxWidth())
                 findQuery?.let { q ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
@@ -839,7 +839,7 @@ fun BrowserScreen(initialUrl: String? = null) {
                         Text(ui.findCount?.let { "${it.first}/${it.second}" } ?: "", modifier = Modifier.padding(horizontal = 6.dp))
                         TextButton(onClick = { vm.findNext(false) }) { Text("▲") }
                         TextButton(onClick = { vm.findNext(true) }) { Text("▼") }
-                        IconButton(onClick = { findQuery = null; vm.clearFind() }) { Icon(Icons.Filled.Close, "Close find") }
+                        IconButton(onClick = { findQuery = null; vm.clearFind() }) { Icon(Icons.Outlined.Close, "Close find") }
                     }
                 }
             }
@@ -859,7 +859,7 @@ fun BrowserScreen(initialUrl: String? = null) {
                     onClick = { val single = media.singleOrNull(); if (single != null && single.downloadable) download(single) else mediaDialog = true },
                     icon = {
                         BadgedBox(badge = { Badge { Text(media.size.toString()) } }) {
-                            Icon(if (media.any { it.stream }) Icons.Filled.Movie else Icons.Filled.Download, null)
+                            Icon(if (media.any { it.stream }) Icons.Outlined.Movie else Icons.Outlined.Download, null)
                         }
                     },
                     text = { Text(if (ready > 0) "Download" else "Media") },
@@ -886,7 +886,7 @@ fun BrowserScreen(initialUrl: String? = null) {
                             Text((if (t.isPrivate) "🔒 " else "") + t.title, maxLines = 1, style = if (t.id == ui.currentId) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium)
                             Text(t.url, maxLines = 1, style = MaterialTheme.typography.labelSmall)
                         }
-                        IconButton(onClick = { vm.close(t.id) }) { Icon(Icons.Filled.Close, "Close tab") }
+                        IconButton(onClick = { vm.close(t.id) }) { Icon(Icons.Outlined.Close, "Close tab") }
                     }
                     HorizontalDivider()
                 }
@@ -934,7 +934,7 @@ private fun MediaSheet(media: List<DetectedMedia>, onDismiss: () -> Unit, onDown
                             }
                         }
                         if (m.pending) CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                        else if (m.downloadable) IconButton(onClick = { onDownload(m) }) { Icon(Icons.Filled.Download, "Download ${m.name}") }
+                        else if (m.downloadable) IconButton(onClick = { onDownload(m) }) { Icon(Icons.Outlined.Download, "Download ${m.name}") }
                     }
                     HorizontalDivider()
                 }
@@ -958,8 +958,8 @@ private fun FullscreenVideo(view: android.view.View, onExit: () -> Unit, onDownl
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             AndroidView(factory = { (view.parent as? ViewGroup)?.removeView(view); view }, modifier = Modifier.fillMaxSize())
             Row(Modifier.align(Alignment.TopEnd).padding(8.dp)) {
-                IconButton(onClick = onDownload) { Icon(Icons.Filled.Download, "Download this video", tint = Color.White) }
-                IconButton(onClick = onExit) { Icon(Icons.Filled.FullscreenExit, "Exit fullscreen", tint = Color.White) }
+                IconButton(onClick = onDownload) { Icon(Icons.Outlined.Download, "Download this video", tint = Color.White) }
+                IconButton(onClick = onExit) { Icon(Icons.Outlined.FullscreenExit, "Exit fullscreen", tint = Color.White) }
             }
         }
     }

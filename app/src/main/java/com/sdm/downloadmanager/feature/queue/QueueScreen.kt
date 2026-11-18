@@ -15,11 +15,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.outlined.DragHandle
+import androidx.compose.material.icons.outlined.Pause
+import androidx.compose.material.icons.outlined.PlayArrow
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -176,7 +176,7 @@ fun QueueScreen(vm: QueueViewModel = hiltViewModel()) {
 @Composable
 private fun QueueRow(d: Download, live: LiveProgress?, handle: Modifier?, modifier: Modifier, onOpen: () -> Unit, onToggle: () -> Unit, onStar: (Boolean) -> Unit, position: Int? = null) {
     Row(modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (handle != null) Icon(Icons.Filled.DragHandle, "Drag to reorder", handle.padding(end = 8.dp))
+        if (handle != null) Icon(Icons.Outlined.DragHandle, "Drag to reorder", handle.padding(end = 8.dp))
         CategoryBadge(d.category, size = 36)
         Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
@@ -188,8 +188,8 @@ private fun QueueRow(d: Download, live: LiveProgress?, handle: Modifier?, modifi
             }
         }
         val important = d.important
-        IconButton(onClick = { onStar(important) }) { Icon(if (important) Icons.Filled.Star else Icons.Filled.StarBorder, "Important") }
-        IconButton(onClick = onToggle) { Icon(if (d.state.isActive || d.state == DownloadState.QUEUED) Icons.Filled.Pause else Icons.Filled.PlayArrow, "Pause or resume") }
+        IconButton(onClick = { onStar(important) }) { Icon(if (important) Icons.Filled.Star else Icons.Outlined.StarBorder, "Important") }
+        IconButton(onClick = onToggle) { Icon(if (d.state.isActive || d.state == DownloadState.QUEUED) Icons.Outlined.Pause else Icons.Outlined.PlayArrow, "Pause or resume") }
         IconButton(onClick = onOpen) { Text("›", style = MaterialTheme.typography.titleLarge) }
     }
 }

@@ -1,5 +1,8 @@
 package com.sdm.downloadmanager.feature.add
 
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.Switch
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -19,8 +22,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -328,7 +331,7 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                                 IconButton(onClick = {
                                     val cm = ctx.getSystemService(android.content.ClipboardManager::class.java)
                                     cm?.primaryClip?.getItemAt(0)?.coerceToText(ctx)?.toString()?.let { text = it }
-                                }) { Icon(Icons.Filled.ContentPaste, "Paste") }
+                                }) { Icon(Icons.Outlined.ContentPaste, "Paste") }
                             },
                         )
                     }
@@ -364,6 +367,7 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
             },
         )
         is AddStep.Confirm -> {
+            var advanced by rememberSaveable { mutableStateOf(false) }
             AlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text("Download file") },
@@ -442,35 +446,50 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             vm.grantedFolders().take(3).forEach { f -> FilterChip(s.folder?.treeUri == f.treeUri, { vm.update { it.copy(folder = f) } }, { Text(f.name) }) }
                             FilterChip(false, { folderPicker.launch(null) }, { Text("Choose folder…") })
                         }
-                        if (!s.torrent) Text(if (s.stream != null) "Parallel segments" else "Connections", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-                        if (!s.torrent) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            (if (s.stream != null) listOf(1, 2, 4, 8) else CONNECTION_PROFILES).forEach { n -> FilterChip(s.connections == n, { vm.update { it.copy(connections = n) } }, { Text("$n") }, enabled = s.info.rangeSupported || n == 1) }
+                        // Everyday downloads only need the name and destination; the rest stays one tap away.
+                        TextButton(onClick = { advanced = !advanced }, modifier = Modifier.fillMaxWidth().padding(top = 6.dp), contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 0.dp)) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Advanced options", style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    listOfNotNull(if (!s.torrent) "${s.connections} connections" else null, when (s.policy) { NetworkPolicy.ANY -> "Any network"; NetworkPolicy.UNMETERED_ONLY -> "Unmetered only"; NetworkPolicy.WIFI_ONLY -> "Wi-Fi only" }, if (s.startPaused) "Add paused" else if (s.startAt != null) "Scheduled" else null).joinToString(" · "),
+                                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Icon(if (advanced) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null)
                         }
-                        s.recommendation?.takeIf { it.sampleCount > 0 }?.let { Text("Suggested: ${it.connections} · ${it.basis}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
-                        Text("Network", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            FilterChip(s.policy == NetworkPolicy.ANY, { vm.update { it.copy(policy = NetworkPolicy.ANY) } }, { Text("Any network") })
-                            FilterChip(s.policy == NetworkPolicy.UNMETERED_ONLY, { vm.update { it.copy(policy = NetworkPolicy.UNMETERED_ONLY) } }, { Text("Unmetered only") })
-                            FilterChip(s.policy == NetworkPolicy.WIFI_ONLY, { vm.update { it.copy(policy = NetworkPolicy.WIFI_ONLY) } }, { Text("Wi-Fi only") })
-                        }
-                        Text("Priority", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Priority.entries.forEach { p -> FilterChip(s.priority == p, { vm.update { it.copy(priority = p) } }, { Text(p.name.lowercase().replaceFirstChar { c -> c.uppercase() }) }) }
-                        }
-                        Text("Start", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
-                        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            FilterChip(s.startAt == null && !s.startPaused, { vm.update { it.copy(startAt = null, startPaused = false) } }, { Text("Now") })
-                            FilterChip(s.startAt != null, { timePicker = true }, { Text(s.startAt?.let { "At " + java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalTime().withSecond(0).withNano(0) } ?: "At a time…") })
-                            FilterChip(s.startPaused, { vm.update { it.copy(startPaused = !it.startPaused, startAt = null) } }, { Text("Add paused") })
-                        }
-                        OutlinedTextField(s.speedLimitKb, { v -> vm.update { it.copy(speedLimitKb = v.filter(Char::isDigit).take(7)) } }, Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text("Speed limit (KB/s, empty = unlimited)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
-                        if (s.stream == null && !s.torrent) OutlinedTextField(s.checksum, { v -> vm.update { it.copy(checksum = v.trim()) } }, Modifier.fillMaxWidth().padding(top = 4.dp), label = { Text("Expected checksum (optional)") }, singleLine = true)
-                        if (s.stream == null && !s.torrent) OutlinedTextField(
-                            s.mirrorsText, { v -> vm.update { it.copy(mirrorsText = v) } }, Modifier.fillMaxWidth().padding(top = 4.dp),
-                            label = { Text("Mirror links (optional)") }, supportingText = { Text("One per line. Used in order if this link fails.") }, minLines = 1, maxLines = 4,
-                        )
-                        if (s.stream == null && s.checksum.isNotBlank()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            listOf("MD5", "SHA-1", "SHA-256", "SHA-512").forEach { a -> FilterChip(s.checksumAlgorithm == a, { vm.update { it.copy(checksumAlgorithm = a) } }, { Text(a) }) }
+                        androidx.compose.animation.AnimatedVisibility(visible = advanced) {
+                            Column {
+                            if (!s.torrent) Text(if (s.stream != null) "Parallel segments" else "Connections", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                            if (!s.torrent) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                (if (s.stream != null) listOf(1, 2, 4, 8) else CONNECTION_PROFILES).forEach { n -> FilterChip(s.connections == n, { vm.update { it.copy(connections = n) } }, { Text("$n") }, enabled = s.info.rangeSupported || n == 1) }
+                            }
+                            s.recommendation?.takeIf { it.sampleCount > 0 }?.let { Text("Suggested: ${it.connections} · ${it.basis}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
+                            Text("Network", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                FilterChip(s.policy == NetworkPolicy.ANY, { vm.update { it.copy(policy = NetworkPolicy.ANY) } }, { Text("Any network") })
+                                FilterChip(s.policy == NetworkPolicy.UNMETERED_ONLY, { vm.update { it.copy(policy = NetworkPolicy.UNMETERED_ONLY) } }, { Text("Unmetered only") })
+                                FilterChip(s.policy == NetworkPolicy.WIFI_ONLY, { vm.update { it.copy(policy = NetworkPolicy.WIFI_ONLY) } }, { Text("Wi-Fi only") })
+                            }
+                            Text("Priority", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Priority.entries.forEach { p -> FilterChip(s.priority == p, { vm.update { it.copy(priority = p) } }, { Text(p.name.lowercase().replaceFirstChar { c -> c.uppercase() }) }) }
+                            }
+                            Text("Start", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                FilterChip(s.startAt == null && !s.startPaused, { vm.update { it.copy(startAt = null, startPaused = false) } }, { Text("Now") })
+                                FilterChip(s.startAt != null, { timePicker = true }, { Text(s.startAt?.let { "At " + java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalTime().withSecond(0).withNano(0) } ?: "At a time…") })
+                                FilterChip(s.startPaused, { vm.update { it.copy(startPaused = !it.startPaused, startAt = null) } }, { Text("Add paused") })
+                            }
+                            OutlinedTextField(s.speedLimitKb, { v -> vm.update { it.copy(speedLimitKb = v.filter(Char::isDigit).take(7)) } }, Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text("Speed limit (KB/s, empty = unlimited)") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number))
+                            if (s.stream == null && !s.torrent) OutlinedTextField(s.checksum, { v -> vm.update { it.copy(checksum = v.trim()) } }, Modifier.fillMaxWidth().padding(top = 4.dp), label = { Text("Expected checksum (optional)") }, singleLine = true)
+                            if (s.stream == null && !s.torrent) OutlinedTextField(
+                                s.mirrorsText, { v -> vm.update { it.copy(mirrorsText = v) } }, Modifier.fillMaxWidth().padding(top = 4.dp),
+                                label = { Text("Mirror links (optional)") }, supportingText = { Text("One per line. Used in order if this link fails.") }, minLines = 1, maxLines = 4,
+                            )
+                            if (s.stream == null && s.checksum.isNotBlank()) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                listOf("MD5", "SHA-1", "SHA-256", "SHA-512").forEach { a -> FilterChip(s.checksumAlgorithm == a, { vm.update { it.copy(checksumAlgorithm = a) } }, { Text(a) }) }
+                            }
+                            }
                         }
                         if (s.decision.appliedRules.isNotEmpty()) Text("Rules applied: ${s.decision.appliedRules.joinToString()}", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
                     }
@@ -510,7 +529,7 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
 private fun Warning(text: String) {
     Card(Modifier.fillMaxWidth().padding(top = 8.dp), colors = CardDefaults.cardColors(containerColor = LocalStatusColors.current.warning.copy(alpha = 0.14f))) {
         Row(Modifier.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Filled.Warning, null, tint = LocalStatusColors.current.warning)
+            Icon(Icons.Outlined.Warning, null, tint = LocalStatusColors.current.warning)
             Spacer(Modifier.width(8.dp))
             Text(text, style = MaterialTheme.typography.bodySmall)
         }

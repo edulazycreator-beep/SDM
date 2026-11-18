@@ -1,5 +1,12 @@
 package com.sdm.downloadmanager.feature.details
 
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.foundation.layout.Box
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,7 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
@@ -166,7 +173,18 @@ fun DetailsScreen(id: Long, vm: DetailsViewModel = hiltViewModel()) {
     val folderPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { it?.let(vm::changeFolder) }
     androidx.compose.runtime.LaunchedEffect(message) { message?.let { app.snackbar.showSnackbar(it); vm.consumeMessage() } }
 
-    SdmScaffold(title = "Download details", onBack = { app.nav.popBackStack() }) { padding ->
+    var overflow by remember { mutableStateOf(false) }
+    SdmScaffold(title = "Download details", onBack = { app.nav.popBackStack() }, actions = {
+        val cur = d
+        if (cur != null) Box {
+            IconButton(onClick = { overflow = true }) { Icon(Icons.Outlined.MoreVert, "More") }
+            DropdownMenu(overflow, { overflow = false }) {
+                if (!cur.state.isTerminal) DropdownMenuItem(text = { Text("Cancel") }, leadingIcon = { Icon(Icons.Outlined.Close, null) }, onClick = { overflow = false; vm.cancel() })
+                DropdownMenuItem(text = { Text(if (cur.state == DownloadState.COMPLETED) "Download again" else "Restart") }, leadingIcon = { Icon(Icons.Outlined.Refresh, null) }, onClick = { overflow = false; vm.restart() })
+                DropdownMenuItem(text = { Text("Delete") }, leadingIcon = { Icon(Icons.Outlined.Delete, null) }, onClick = { overflow = false; confirmDelete = true })
+            }
+        }
+    }) { padding ->
         val dl = d ?: return@SdmScaffold
         val done = live?.downloadedBytes ?: dl.downloadedBytes
         val total = live?.totalBytes ?: dl.totalBytes
@@ -212,9 +230,6 @@ fun DetailsScreen(id: Long, vm: DetailsViewModel = hiltViewModel()) {
                         }
                         else -> Unit
                     }
-                    if (!dl.state.isTerminal) OutlinedButton(onClick = vm::cancel) { Text("Cancel") }
-                    OutlinedButton(onClick = vm::restart) { Text(if (dl.state == DownloadState.COMPLETED) "Download again" else "Restart") }
-                    OutlinedButton(onClick = { confirmDelete = true }) { Text("Delete") }
                 }
                 SectionHeader("File")
                 InfoRow("File name", dl.fileName, onClick = { editDialog = "rename" })
@@ -244,7 +259,7 @@ fun DetailsScreen(id: Long, vm: DetailsViewModel = hiltViewModel()) {
                 dl.checksumActual?.let { InfoRow("Verified", it) }
                 if (dl.state == DownloadState.COMPLETED) TextButton(onClick = { vm.verifyFile(dl) }) { Text("Compute checksum of the file") }
                 SectionHeader("Diagnostics", action = {
-                    IconButton(onClick = { ctx.copyToClipboard("SDM diagnostics", vm.report(dl, events)) }) { Icon(Icons.Filled.ContentCopy, "Copy diagnostic report") }
+                    IconButton(onClick = { ctx.copyToClipboard("SDM diagnostics", vm.report(dl, events)) }) { Icon(Icons.Outlined.ContentCopy, "Copy diagnostic report") }
                 })
             }
             items(events, key = { it.id }) { e ->

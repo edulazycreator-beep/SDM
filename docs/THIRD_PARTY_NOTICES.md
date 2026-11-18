@@ -10,6 +10,7 @@
 | libtorrent / libtorrent4j | BitTorrent | BSD-3-Clause / MIT |
 | Mozilla Readability.js (`assets/reader`) | Reader view | Apache-2.0 |
 | StevenBlack/hosts unified list (`assets/adblock`) | Ad/tracker blocking | MIT, © Steven Black |
+| Poppins font (`designsystem/res/font`) | App typeface | SIL Open Font License 1.1 (`docs/POPPINS_OFL.txt`) |
 | Kotlin, kotlinx.coroutines, kotlinx.serialization | Language and libraries | Apache-2.0 |
 
 Test-only: Apache MINA FtpServer and SSHD (Apache-2.0), JUnit (EPL-1.0).

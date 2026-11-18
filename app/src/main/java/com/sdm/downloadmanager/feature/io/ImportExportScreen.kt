@@ -8,11 +8,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Backup
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Restore
+import androidx.compose.material.icons.outlined.Backup
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.FileUpload
+import androidx.compose.material.icons.outlined.History
+import androidx.compose.material.icons.outlined.Restore
 import androidx.compose.material3.MaterialTheme
 import com.sdm.core.designsystem.i18n.Text
 import androidx.compose.runtime.Composable
@@ -71,15 +71,15 @@ fun ImportExportScreen(vm: ImportExportViewModel = hiltViewModel()) {
     SdmScaffold("Import, export and backup", onBack = { app.nav.popBackStack() }) { p ->
         Column(Modifier.padding(p).padding(horizontal = LocalSpacing.current.l).verticalScroll(rememberScrollState())) {
             SectionHeader("Import")
-            NavRow("Import links", "TXT (one link per line) or an SDM JSON list", Icons.Filled.FileUpload) { import.launch(arrayOf("text/plain", "application/json", "text/*")) }
+            NavRow("Import links", "TXT (one link per line) or an SDM JSON list", Icons.Outlined.FileUpload) { import.launch(arrayOf("text/plain", "application/json", "text/*")) }
             SwitchRow("Add imported downloads paused", paused, { paused = it }, "Imported links are checked when they start; they may have expired")
             SectionHeader("Export")
-            NavRow("Export download list", "JSON that SDM can import again", Icons.Filled.FileDownload) { exportList.launch("sdm-downloads-$today.json") }
-            NavRow("Export history", "CSV for spreadsheets", Icons.Filled.History) { exportHistory.launch("sdm-history-$today.csv") }
+            NavRow("Export download list", "JSON that SDM can import again", Icons.Outlined.FileDownload) { exportList.launch("sdm-downloads-$today.json") }
+            NavRow("Export history", "CSV for spreadsheets", Icons.Outlined.History) { exportHistory.launch("sdm-history-$today.csv") }
             Text("Exports never include cookies, sign-in headers or tokens in links.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             SectionHeader("Backup")
-            NavRow("Back up settings", "Settings, smart rules and schedule", Icons.Filled.Backup) { backup.launch("sdm-settings-$today.json") }
-            NavRow("Restore settings", "Replaces current settings and rules", Icons.Filled.Restore) { restore.launch(arrayOf("application/json", "text/*")) }
+            NavRow("Back up settings", "Settings, smart rules and schedule", Icons.Outlined.Backup) { backup.launch("sdm-settings-$today.json") }
+            NavRow("Restore settings", "Replaces current settings and rules", Icons.Outlined.Restore) { restore.launch(arrayOf("application/json", "text/*")) }
         }
     }
 }

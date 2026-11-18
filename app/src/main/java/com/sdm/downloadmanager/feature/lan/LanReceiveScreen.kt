@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.WifiOff
+import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.WifiOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
@@ -95,7 +95,7 @@ fun LanReceiveScreen(vm: LanReceiveViewModel = hiltViewModel()) {
     val app = LocalAppActions.current
     SdmScaffold(title = "Send from computer", onBack = { app.nav.popBackStack() }) { p ->
         if (ui.address == null) {
-            EmptyState(Icons.Filled.WifiOff, "Not on Wi-Fi", ui.error ?: "Connect to Wi-Fi first.", Modifier.padding(p))
+            EmptyState(Icons.Outlined.WifiOff, "Not on Wi-Fi", ui.error ?: "Connect to Wi-Fi first.", Modifier.padding(p))
             return@SdmScaffold
         }
         Column(Modifier.fillMaxSize().padding(p).padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

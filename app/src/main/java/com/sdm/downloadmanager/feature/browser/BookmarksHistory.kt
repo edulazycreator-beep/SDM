@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmarks
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.outlined.Bookmarks
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DeleteSweep
+import androidx.compose.material.icons.outlined.History
 import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -59,7 +59,7 @@ fun BookmarksScreen(vm: BookmarksHistoryViewModel = hiltViewModel()) {
     val items by vm.bookmarks.collectAsState()
     val app = LocalAppActions.current
     SdmScaffold("Bookmarks", onBack = { app.nav.popBackStack() }) { p ->
-        if (items.isEmpty()) EmptyState(Icons.Filled.Bookmarks, "No bookmarks", "Tap the star in the browser to save a page.", Modifier.padding(p))
+        if (items.isEmpty()) EmptyState(Icons.Outlined.Bookmarks, "No bookmarks", "Tap the star in the browser to save a page.", Modifier.padding(p))
         else LazyColumn(Modifier.padding(p)) {
             items(items, key = { it.id }) { b ->
                 Row(Modifier.fillMaxWidth().clickable { app.nav.navigate(BrowserRoute(b.url)) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -67,7 +67,7 @@ fun BookmarksScreen(vm: BookmarksHistoryViewModel = hiltViewModel()) {
                         Text(b.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
                         Text(b.url, style = MaterialTheme.typography.bodySmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { vm.removeBookmark(b.url) }) { Icon(Icons.Filled.Delete, "Remove bookmark") }
+                    IconButton(onClick = { vm.removeBookmark(b.url) }) { Icon(Icons.Outlined.Delete, "Remove bookmark") }
                 }
             }
         }
@@ -79,8 +79,8 @@ fun HistoryScreen(vm: BookmarksHistoryViewModel = hiltViewModel()) {
     val items by vm.history.collectAsState()
     val app = LocalAppActions.current
     var confirm by remember { mutableStateOf(false) }
-    SdmScaffold("History", onBack = { app.nav.popBackStack() }, actions = { IconButton(onClick = { confirm = true }) { Icon(Icons.Filled.DeleteSweep, "Clear history") } }) { p ->
-        if (items.isEmpty()) EmptyState(Icons.Filled.History, "No history", "Pages you visit (outside private tabs) appear here.", Modifier.padding(p))
+    SdmScaffold("History", onBack = { app.nav.popBackStack() }, actions = { IconButton(onClick = { confirm = true }) { Icon(Icons.Outlined.DeleteSweep, "Clear history") } }) { p ->
+        if (items.isEmpty()) EmptyState(Icons.Outlined.History, "No history", "Pages you visit (outside private tabs) appear here.", Modifier.padding(p))
         else LazyColumn(Modifier.padding(p)) {
             items(items, key = { it.id }) { h ->
                 Row(Modifier.fillMaxWidth().clickable { app.nav.navigate(BrowserRoute(h.url)) }.padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -88,7 +88,7 @@ fun HistoryScreen(vm: BookmarksHistoryViewModel = hiltViewModel()) {
                         Text(h.title, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
                         Text("${fmt.format(Instant.ofEpochMilli(h.lastVisited))} · ${h.url}", style = MaterialTheme.typography.bodySmall, maxLines = 1, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { vm.deleteHistory(h.id) }) { Icon(Icons.Filled.Delete, "Delete entry") }
+                    IconButton(onClick = { vm.deleteHistory(h.id) }) { Icon(Icons.Outlined.Delete, "Delete entry") }
                 }
             }
         }

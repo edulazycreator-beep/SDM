@@ -95,6 +95,14 @@ been run yet (see "Not yet verified").
 - Not yet verified on a device: real-world sites (detection while playing, remux of their streams),
   torrents with real swarms, FTP/SFTP against real servers, widget and tile on launchers.
 
+## UI tidy-up (2026-11-19)
+- Poppins (bundled, SIL OFL) as the app font with adjusted type scale; outlined (minimal) icons
+  throughout; settings grouped in cards with tinted icon tiles.
+- Add dialog: name, destination and stream options up front; connections, network, priority,
+  start time, speed limit, checksum and mirrors under "Advanced options" (summary shown).
+- Browser: one toolbar row (back, address with reload, tabs, menu); forward and bookmark in the menu.
+- Download details: cancel, restart and delete moved to the top-bar menu.
+
 ## UI improvements and new features (2026-11-18, second round)
 - UI: two-line download rows with stream badge and estimated sizes, thumbnails for finished
   videos/images, swipe-to-delete with Undo, "Download again", actionable empty states, simpler

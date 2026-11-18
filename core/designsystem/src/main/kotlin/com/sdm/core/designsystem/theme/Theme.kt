@@ -80,21 +80,33 @@ private fun Color.compositeOverWhite(): Color = Color(
 
 private fun Color.lighten(f: Float = 0.45f) = Color(red + (1 - red) * f, green + (1 - green) * f, blue + (1 - blue) * f, alpha)
 
+/** Poppins (SIL Open Font License, bundled so it works offline). */
+val Poppins = FontFamily(
+    androidx.compose.ui.text.font.Font(com.sdm.core.designsystem.R.font.poppins_regular, FontWeight.Normal),
+    androidx.compose.ui.text.font.Font(com.sdm.core.designsystem.R.font.poppins_medium, FontWeight.Medium),
+    androidx.compose.ui.text.font.Font(com.sdm.core.designsystem.R.font.poppins_semibold, FontWeight.SemiBold),
+    androidx.compose.ui.text.font.Font(com.sdm.core.designsystem.R.font.poppins_bold, FontWeight.Bold),
+)
+
+// Poppins is wide with a tall x-height, so body sizes sit slightly below Material defaults.
 private val SdmTypography = Typography().let { t ->
-    val family = FontFamily.SansSerif
+    val f = Poppins
     Typography(
-        displaySmall = t.displaySmall.copy(fontFamily = family, fontWeight = FontWeight.SemiBold),
-        headlineMedium = t.headlineMedium.copy(fontFamily = family, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.2).sp),
-        headlineSmall = t.headlineSmall.copy(fontFamily = family, fontWeight = FontWeight.SemiBold),
-        titleLarge = t.titleLarge.copy(fontFamily = family, fontWeight = FontWeight.SemiBold),
-        titleMedium = t.titleMedium.copy(fontFamily = family, fontWeight = FontWeight.SemiBold),
-        titleSmall = t.titleSmall.copy(fontFamily = family, fontWeight = FontWeight.Medium),
-        bodyLarge = t.bodyLarge.copy(fontFamily = family),
-        bodyMedium = t.bodyMedium.copy(fontFamily = family),
-        bodySmall = t.bodySmall.copy(fontFamily = family),
-        labelLarge = t.labelLarge.copy(fontFamily = family, fontWeight = FontWeight.Medium),
-        labelMedium = t.labelMedium.copy(fontFamily = family),
-        labelSmall = t.labelSmall.copy(fontFamily = family),
+        displayLarge = t.displayLarge.copy(fontFamily = f, fontWeight = FontWeight.SemiBold),
+        displayMedium = t.displayMedium.copy(fontFamily = f, fontWeight = FontWeight.SemiBold),
+        displaySmall = t.displaySmall.copy(fontFamily = f, fontWeight = FontWeight.SemiBold),
+        headlineLarge = t.headlineLarge.copy(fontFamily = f, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
+        headlineMedium = t.headlineMedium.copy(fontFamily = f, fontWeight = FontWeight.SemiBold, letterSpacing = (-0.3).sp),
+        headlineSmall = t.headlineSmall.copy(fontFamily = f, fontWeight = FontWeight.SemiBold, fontSize = 22.sp, lineHeight = 30.sp),
+        titleLarge = t.titleLarge.copy(fontFamily = f, fontWeight = FontWeight.SemiBold, fontSize = 20.sp, lineHeight = 28.sp),
+        titleMedium = t.titleMedium.copy(fontFamily = f, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+        titleSmall = t.titleSmall.copy(fontFamily = f, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, lineHeight = 20.sp, letterSpacing = 0.sp),
+        bodyLarge = t.bodyLarge.copy(fontFamily = f, fontSize = 15.sp, lineHeight = 22.sp, letterSpacing = 0.sp),
+        bodyMedium = t.bodyMedium.copy(fontFamily = f, fontSize = 13.sp, lineHeight = 20.sp, letterSpacing = 0.sp),
+        bodySmall = t.bodySmall.copy(fontFamily = f, fontSize = 12.sp, lineHeight = 17.sp, letterSpacing = 0.sp),
+        labelLarge = t.labelLarge.copy(fontFamily = f, fontWeight = FontWeight.Medium, fontSize = 14.sp, letterSpacing = 0.sp),
+        labelMedium = t.labelMedium.copy(fontFamily = f, fontWeight = FontWeight.Medium, fontSize = 12.sp, letterSpacing = 0.sp),
+        labelSmall = t.labelSmall.copy(fontFamily = f, fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.sp),
     )
 }
 

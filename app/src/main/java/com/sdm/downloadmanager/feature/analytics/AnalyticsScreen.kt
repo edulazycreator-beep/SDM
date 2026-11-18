@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.outlined.DeleteSweep
 import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -96,7 +96,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
     val app = LocalAppActions.current
     val sp = LocalSpacing.current
     var confirm by remember { mutableStateOf<String?>(null) }
-    SdmScaffold("Analytics", onBack = { app.nav.popBackStack() }, actions = { IconButton(onClick = { confirm = "stats" }) { Icon(Icons.Filled.DeleteSweep, "Clear analytics") } }) { p ->
+    SdmScaffold("Analytics", onBack = { app.nav.popBackStack() }, actions = { IconButton(onClick = { confirm = "stats" }) { Icon(Icons.Outlined.DeleteSweep, "Clear analytics") } }) { p ->
         Column(Modifier.padding(p).padding(horizontal = sp.l).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(sp.s)) {
             Row(horizontalArrangement = Arrangement.spacedBy(sp.s)) {
                 StatTile("Current", Formatters.speed(ui.currentBps), Modifier.weight(1f))
@@ -133,7 +133,7 @@ fun AnalyticsScreen(vm: AnalyticsViewModel = hiltViewModel()) {
             SectionHeader("By category")
             if (ui.categories.isEmpty()) Text("No completed downloads yet.", style = MaterialTheme.typography.bodySmall)
             else HorizontalBars(ui.categories.sortedByDescending { it.bytes }.map { it.category.label to it.bytes.toFloat() }, valueLabel = { Formatters.bytes(it.toLong()) })
-            SectionHeader("Speed Intelligence", action = { IconButton(onClick = { confirm = "intel" }) { Icon(Icons.Filled.DeleteSweep, "Reset Speed Intelligence") } })
+            SectionHeader("Speed Intelligence", action = { IconButton(onClick = { confirm = "intel" }) { Icon(Icons.Outlined.DeleteSweep, "Reset Speed Intelligence") } })
             Text("Rule-based recommendations from your own measured downloads (no machine learning).", style = MaterialTheme.typography.bodySmall)
             if (ui.recommendations.isEmpty()) Text("Recommendations appear after downloads finish.", style = MaterialTheme.typography.bodySmall)
             ui.recommendations.forEach { (host, r) ->

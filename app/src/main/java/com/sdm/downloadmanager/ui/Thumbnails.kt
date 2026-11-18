@@ -23,7 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.outlined.PlayCircle
 import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.ui.graphics.Color
 import com.sdm.core.common.FileCategory
@@ -90,6 +90,6 @@ fun MediaThumbnail(uri: String?, category: FileCategory, modifier: Modifier = Mo
     if (b == null) { CategoryBadge(category, modifier, sizeDp); return }
     Box(modifier.size(sizeDp.dp).clip(RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
         Image(b.asImageBitmap(), contentDescription = category.label, contentScale = ContentScale.Crop, modifier = Modifier.size(sizeDp.dp))
-        if (category == FileCategory.VIDEO) Icon(Icons.Filled.PlayCircle, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size((sizeDp * 0.45).dp))
+        if (category == FileCategory.VIDEO) Icon(Icons.Outlined.PlayCircle, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size((sizeDp * 0.45).dp))
     }
 }

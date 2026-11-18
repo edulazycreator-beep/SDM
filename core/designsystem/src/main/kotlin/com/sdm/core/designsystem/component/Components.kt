@@ -1,5 +1,6 @@
 package com.sdm.core.designsystem.component
 
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -19,14 +20,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Android
-import androidx.compose.material.icons.filled.Archive
-import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Android
+import androidx.compose.material.icons.outlined.Archive
+import androidx.compose.material.icons.outlined.Audiotrack
+import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.Movie
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -62,13 +63,13 @@ import com.sdm.core.designsystem.theme.LocalStatusColors
 import com.sdm.domain.DownloadState
 
 fun FileCategory.icon(): ImageVector = when (this) {
-    FileCategory.VIDEO -> Icons.Filled.Movie
-    FileCategory.MUSIC -> Icons.Filled.Audiotrack
-    FileCategory.IMAGE -> Icons.Filled.Image
-    FileCategory.DOCUMENT -> Icons.Filled.Description
-    FileCategory.ARCHIVE -> Icons.Filled.Archive
-    FileCategory.APPLICATION -> Icons.Filled.Android
-    FileCategory.OTHER -> Icons.Filled.InsertDriveFile
+    FileCategory.VIDEO -> Icons.Outlined.Movie
+    FileCategory.MUSIC -> Icons.Outlined.Audiotrack
+    FileCategory.IMAGE -> Icons.Outlined.Image
+    FileCategory.DOCUMENT -> Icons.Outlined.Description
+    FileCategory.ARCHIVE -> Icons.Outlined.Archive
+    FileCategory.APPLICATION -> Icons.Outlined.Android
+    FileCategory.OTHER -> Icons.Outlined.InsertDriveFile
 }
 
 @Composable
@@ -204,15 +205,32 @@ fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subt
     }
 }
 
+/** A titled card that groups related settings rows. */
+@Composable
+fun SettingsGroup(title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Column(modifier.fillMaxWidth().padding(top = 18.dp)) {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(start = 6.dp, bottom = 8.dp))
+        Card(shape = RoundedCornerShape(22.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) { content() }
+        }
+    }
+}
+
 @Composable
 fun NavRow(title: String, subtitle: String? = null, icon: ImageVector? = null, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = LocalSpacing.current.listItemVertical), verticalAlignment = Alignment.CenterVertically) {
-        if (icon != null) { Icon(icon, null, tint = MaterialTheme.colorScheme.primary); Spacer(Modifier.width(16.dp)) }
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(onClick = onClick).padding(vertical = LocalSpacing.current.listItemVertical), verticalAlignment = Alignment.CenterVertically) {
+        if (icon != null) {
+            Box(
+                Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center,
+            ) { Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(20.dp)) }
+            Spacer(Modifier.width(14.dp))
+        }
         Column(Modifier.weight(1f)) {
             Text(title, style = MaterialTheme.typography.bodyLarge)
             subtitle?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
         }
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

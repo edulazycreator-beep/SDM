@@ -17,10 +17,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.TipsAndUpdates
+import androidx.compose.material.icons.outlined.Bolt
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.TipsAndUpdates
 import androidx.compose.material3.Button
 import com.sdm.core.designsystem.i18n.Icon
 import androidx.compose.material3.MaterialTheme
@@ -40,10 +40,10 @@ import androidx.compose.ui.unit.dp
 private data class Page(val icon: ImageVector, val title: String, val body: String)
 
 private val pages = listOf(
-    Page(Icons.Filled.Download, "Smart Download Manager", "Download Smarter. Faster. Better.\n\nSDM splits large files into parts and downloads them in parallel when the server allows it, pauses and resumes safely, and checks every file before calling it complete."),
-    Page(Icons.Filled.Notifications, "Stay informed", "SDM shows progress, speed and remaining time in notifications, with pause and cancel buttons. Android asks for permission to show them.\n\nWithout it, downloads still run; you will see them in the system's task manager instead."),
-    Page(Icons.Filled.Bolt, "Works in the background", "Android limits background work to save battery. SDM uses the system's long-running download jobs, so transfers keep going when you switch apps. If your phone stops them, open SDM and they continue from where they stopped."),
-    Page(Icons.Filled.TipsAndUpdates, "Quick start", "• Copy a link: SDM offers to download it when you open the app.\n• Use the built-in browser: downloads carry your sign-in cookies.\n• Share a link to SDM from any app.\n• Set rules and schedules in Settings."),
+    Page(Icons.Outlined.Download, "Smart Download Manager", "Download Smarter. Faster. Better.\n\nSDM splits large files into parts and downloads them in parallel when the server allows it, pauses and resumes safely, and checks every file before calling it complete."),
+    Page(Icons.Outlined.Notifications, "Stay informed", "SDM shows progress, speed and remaining time in notifications, with pause and cancel buttons. Android asks for permission to show them.\n\nWithout it, downloads still run; you will see them in the system's task manager instead."),
+    Page(Icons.Outlined.Bolt, "Works in the background", "Android limits background work to save battery. SDM uses the system's long-running download jobs, so transfers keep going when you switch apps. If your phone stops them, open SDM and they continue from where they stopped."),
+    Page(Icons.Outlined.TipsAndUpdates, "Quick start", "• Copy a link: SDM offers to download it when you open the app.\n• Use the built-in browser: downloads carry your sign-in cookies.\n• Share a link to SDM from any app.\n• Set rules and schedules in Settings."),
 )
 
 @Composable

@@ -1,6 +1,6 @@
 package com.sdm.downloadmanager.feature.files
 
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.outlined.Lock
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -24,19 +24,19 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.CreateNewFolder
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DriveFileMove
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Sort
-import androidx.compose.material.icons.filled.ViewList
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.DriveFileMove
+import androidx.compose.material.icons.outlined.DriveFileRenameOutline
+import androidx.compose.material.icons.outlined.Folder
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.Sort
+import androidx.compose.material.icons.outlined.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
@@ -210,21 +210,21 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
         onBack = if (selecting) vm::clear else null,
         actions = {
             if (selecting) {
-                IconButton(onClick = vm::selectAll) { Icon(Icons.Filled.SelectAll, "Select all") }
-                IconButton(onClick = { val items = ui.all.filter { it.uri in ui.selected }; ctx.shareFiles(items.map(vm::shareUri), items.map { it.mimeType }) }) { Icon(Icons.Filled.Share, "Share") }
-                IconButton(onClick = { batchRename = true }) { Icon(Icons.Filled.DriveFileRenameOutline, "Batch rename") }
-                IconButton(onClick = { moveDialog = true }) { Icon(Icons.Filled.DriveFileMove, "Move") }
-                IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Filled.Delete, "Delete") }
+                IconButton(onClick = vm::selectAll) { Icon(Icons.Outlined.SelectAll, "Select all") }
+                IconButton(onClick = { val items = ui.all.filter { it.uri in ui.selected }; ctx.shareFiles(items.map(vm::shareUri), items.map { it.mimeType }) }) { Icon(Icons.Outlined.Share, "Share") }
+                IconButton(onClick = { batchRename = true }) { Icon(Icons.Outlined.DriveFileRenameOutline, "Batch rename") }
+                IconButton(onClick = { moveDialog = true }) { Icon(Icons.Outlined.DriveFileMove, "Move") }
+                IconButton(onClick = { confirmDelete = true }) { Icon(Icons.Outlined.Delete, "Delete") }
             } else {
-                IconButton(onClick = { app.nav.navigate(com.sdm.downloadmanager.ui.PrivateFolderRoute) }) { Icon(Icons.Filled.Lock, "Private folder") }
-                IconButton(onClick = { searching = !searching; if (!searching) vm.setQuery("") }) { Icon(Icons.Filled.Search, "Search files") }
-                IconButton(onClick = vm::toggleGrid) { Icon(if (ui.grid) Icons.Filled.ViewList else Icons.Filled.GridView, "Toggle grid") }
+                IconButton(onClick = { app.nav.navigate(com.sdm.downloadmanager.ui.PrivateFolderRoute) }) { Icon(Icons.Outlined.Lock, "Private folder") }
+                IconButton(onClick = { searching = !searching; if (!searching) vm.setQuery("") }) { Icon(Icons.Outlined.Search, "Search files") }
+                IconButton(onClick = vm::toggleGrid) { Icon(if (ui.grid) Icons.Outlined.ViewList else Icons.Outlined.GridView, "Toggle grid") }
                 Box {
-                    IconButton(onClick = { sortMenu = true }) { Icon(Icons.Filled.Sort, "Sort") }
+                    IconButton(onClick = { sortMenu = true }) { Icon(Icons.Outlined.Sort, "Sort") }
                     DropdownMenu(sortMenu, { sortMenu = false }) { FileSort.entries.forEach { s -> DropdownMenuItem(text = { Text(s.label + if (ui.sort == s) "  ✓" else "") }, onClick = { vm.setSort(s); sortMenu = false }) } }
                 }
                 Box {
-                    IconButton(onClick = { overflow = true }) { Icon(Icons.Filled.MoreVert, "More") }
+                    IconButton(onClick = { overflow = true }) { Icon(Icons.Outlined.MoreVert, "More") }
                     DropdownMenu(overflow, { overflow = false }) {
                         DropdownMenuItem(text = { Text("Folders and access") }, onClick = { overflow = false; foldersDialog = true })
                         DropdownMenuItem(text = { Text("Find duplicates") }, onClick = { overflow = false; vm.findDuplicates() })
@@ -245,7 +245,7 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
             PullToRefreshBox(isRefreshing = refreshing, onRefresh = { vm.refresh() }, modifier = Modifier.fillMaxSize()) {
                 if (ui.visible.isEmpty()) {
                     LazyColumn(Modifier.fillMaxSize()) {
-                        item { EmptyState(Icons.Filled.Folder, "No files", "Completed downloads appear here. Add folders under ⋮ › Folders to manage other files.", Modifier.heightIn(min = 360.dp)) }
+                        item { EmptyState(Icons.Outlined.Folder, "No files", "Completed downloads appear here. Add folders under ⋮ › Folders to manage other files.", Modifier.heightIn(min = 360.dp)) }
                     }
                 } else if (ui.grid) {
                     LazyVerticalGrid(GridCells.Adaptive(120.dp), Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(sp.m)) {
@@ -275,7 +275,7 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
                                     Text("${Formatters.bytes(f.sizeBytes)} · ${dateFmt.format(Instant.ofEpochMilli(f.modifiedAt))} · ${f.folder}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
                                 }
                                 Box {
-                                    IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "File actions") }
+                                    IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "File actions") }
                                     DropdownMenu(menu, { menu = false }) {
                                         DropdownMenuItem(text = { Text("Open") }, onClick = { menu = false; ctx.openFile(vm.shareUri(f), f.mimeType, f.name) })
                                         if (com.sdm.downloadmanager.feature.player.PlayerActivity.canPlay(f.mimeType)) DropdownMenuItem(text = { Text("Open with…") }, onClick = { menu = false; ctx.openFile(vm.shareUri(f), f.mimeType, chooser = true) })
@@ -307,8 +307,8 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
                 folders.forEach { f ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(f.name, Modifier.weight(1f))
-                        IconButton(onClick = { newFolderIn = f }) { Icon(Icons.Filled.CreateNewFolder, "Create folder in ${f.name}") }
-                        IconButton(onClick = { vm.removeFolder(f) }) { Icon(Icons.Filled.Delete, "Remove access") }
+                        IconButton(onClick = { newFolderIn = f }) { Icon(Icons.Outlined.CreateNewFolder, "Create folder in ${f.name}") }
+                        IconButton(onClick = { vm.removeFolder(f) }) { Icon(Icons.Outlined.Delete, "Remove access") }
                     }
                 }
             }
@@ -349,7 +349,7 @@ fun FolderPickerDialog(folders: List<GrantedFolder>, title: String, onPick: (Gra
         text = {
             Column {
                 if (folders.isEmpty()) Text("No folders yet. Add one to move files into it.")
-                folders.forEach { f -> TextButton(onClick = { onPick(f) }) { Icon(Icons.Filled.Folder, null); Spacer(Modifier.width(8.dp)); Text(f.name) } }
+                folders.forEach { f -> TextButton(onClick = { onPick(f) }) { Icon(Icons.Outlined.Folder, null); Spacer(Modifier.width(8.dp)); Text(f.name) } }
             }
         },
         confirmButton = { TextButton(onClick = onAdd) { Text("Add folder…") } },
@@ -380,7 +380,7 @@ private fun FileDetailsDialog(f: FileItem, vm: FilesViewModel, onDismiss: () -> 
                 hash?.let { h ->
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(h, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
-                        IconButton(onClick = { ctx.copyToClipboard("Checksum", h.substringAfter(": ")) }) { Icon(Icons.Filled.ContentCopy, "Copy checksum") }
+                        IconButton(onClick = { ctx.copyToClipboard("Checksum", h.substringAfter(": ")) }) { Icon(Icons.Outlined.ContentCopy, "Copy checksum") }
                     }
                 }
             }

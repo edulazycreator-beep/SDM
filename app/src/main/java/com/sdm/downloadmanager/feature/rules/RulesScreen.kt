@@ -15,10 +15,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowDownward
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
@@ -79,7 +79,7 @@ fun RulesScreen(vm: RulesViewModel = hiltViewModel()) {
     val app = LocalAppActions.current
     var editing by remember { mutableStateOf<Rule?>(null) }
     SdmScaffold("Smart rules", onBack = { app.nav.popBackStack() }, floatingActionButton = {
-        FloatingActionButton(onClick = { editing = Rule(0, "New rule", true, (rules.size + 1) * 10, RuleCondition.SizeAbove(1L shl 30), RuleAction.AskConfirmation) }) { Icon(Icons.Filled.Add, "Add rule") }
+        FloatingActionButton(onClick = { editing = Rule(0, "New rule", true, (rules.size + 1) * 10, RuleCondition.SizeAbove(1L shl 30), RuleAction.AskConfirmation) }) { Icon(Icons.Outlined.Add, "Add rule") }
     }) { p ->
         LazyColumn(Modifier.padding(p)) {
             item { Text("Rules run top to bottom; for each kind of action the first matching rule wins.", style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(16.dp)) }
@@ -89,8 +89,8 @@ fun RulesScreen(vm: RulesViewModel = hiltViewModel()) {
                         Text(r.name, style = MaterialTheme.typography.bodyLarge)
                         Text("IF ${r.condition.label}\nTHEN ${r.action.label}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    IconButton(onClick = { vm.move(rules, i, -1) }, enabled = i > 0) { Icon(Icons.Filled.ArrowUpward, "Higher priority") }
-                    IconButton(onClick = { vm.move(rules, i, 1) }, enabled = i < rules.lastIndex) { Icon(Icons.Filled.ArrowDownward, "Lower priority") }
+                    IconButton(onClick = { vm.move(rules, i, -1) }, enabled = i > 0) { Icon(Icons.Outlined.ArrowUpward, "Higher priority") }
+                    IconButton(onClick = { vm.move(rules, i, 1) }, enabled = i < rules.lastIndex) { Icon(Icons.Outlined.ArrowDownward, "Lower priority") }
                     Switch(r.enabled, { vm.save(r.copy(enabled = it)) })
                 }
                 HorizontalDivider()
@@ -165,7 +165,7 @@ private fun RuleEditor(rule: Rule, onSave: (Rule) -> Unit, onDelete: () -> Unit,
         confirmButton = { TextButton(enabled = condition != null && action != null, onClick = { onSave(rule.copy(name = name, condition = condition!!, action = action!!)) }) { Text("Save") } },
         dismissButton = {
             Row {
-                if (rule.id != 0L) TextButton(onClick = onDelete) { Icon(Icons.Filled.Delete, null); Text("Delete") }
+                if (rule.id != 0L) TextButton(onClick = onDelete) { Icon(Icons.Outlined.Delete, null); Text("Delete") }
                 TextButton(onClick = onDismiss) { Text("Cancel") }
             }
         },

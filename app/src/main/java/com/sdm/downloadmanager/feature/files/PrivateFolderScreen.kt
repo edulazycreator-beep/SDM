@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -95,13 +95,13 @@ fun PrivateFolderScreen(vm: PrivateFolderViewModel = hiltViewModel()) {
     LaunchedEffect(message) { message?.let { app.snackbar.showSnackbar(it); vm.message.value = null } }
     SdmScaffold(title = "Private folder", onBack = { app.nav.popBackStack() }) { p ->
         when {
-            !DeviceLock.available(ctx) -> EmptyState(Icons.Filled.Lock, "Set a screen lock first", "The private folder opens with your fingerprint, face or screen lock. Add a PIN, pattern or password in the system settings.", Modifier.padding(p)) {
+            !DeviceLock.available(ctx) -> EmptyState(Icons.Outlined.Lock, "Set a screen lock first", "The private folder opens with your fingerprint, face or screen lock. Add a PIN, pattern or password in the system settings.", Modifier.padding(p)) {
                 Button(onClick = { ctx.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) { Text("Open security settings") }
             }
-            !unlocked -> EmptyState(Icons.Filled.Lock, "Locked", "Files here are only visible in SDM and are not backed up.", Modifier.padding(p)) {
+            !unlocked -> EmptyState(Icons.Outlined.Lock, "Locked", "Files here are only visible in SDM and are not backed up.", Modifier.padding(p)) {
                 Button(onClick = { unlock() }) { Text("Unlock") }
             }
-            files.isEmpty() -> EmptyState(Icons.Filled.Lock, "Nothing here yet", "In Files, open a file's menu and choose \"Move to private folder\".", Modifier.padding(p))
+            files.isEmpty() -> EmptyState(Icons.Outlined.Lock, "Nothing here yet", "In Files, open a file's menu and choose \"Move to private folder\".", Modifier.padding(p))
             else -> LazyColumn(Modifier.fillMaxSize().padding(p)) {
                 items(files, key = { it.path }) { f ->
                     val mime = MimeTypes.forName(f.name)
@@ -116,7 +116,7 @@ fun PrivateFolderScreen(vm: PrivateFolderViewModel = hiltViewModel()) {
                             Text("${Formatters.bytes(f.length())} · ${Formatters.relativeDate(f.lastModified())}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Box {
-                            IconButton(onClick = { menu = true }) { Icon(Icons.Filled.MoreVert, "Actions for ${f.name}") }
+                            IconButton(onClick = { menu = true }) { Icon(Icons.Outlined.MoreVert, "Actions for ${f.name}") }
                             DropdownMenu(menu, { menu = false }) {
                                 DropdownMenuItem(text = { Text("Open with…") }, onClick = { menu = false; ctx.openFile(uri, mime, chooser = true) })
                                 DropdownMenuItem(text = { Text("Move back to Downloads") }, onClick = { menu = false; vm.moveOut(f) })
