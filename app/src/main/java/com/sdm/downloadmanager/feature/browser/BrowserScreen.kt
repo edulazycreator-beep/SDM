@@ -825,11 +825,12 @@ fun BrowserScreen(initialUrl: String? = null) {
                         }
                     }
                 }
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { vm.back() }, enabled = tab?.canGoBack == true) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
-                    IconButton(onClick = { vm.forward() }, enabled = tab?.canGoForward == true) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "Forward") }
-                    IconButton(onClick = { vm.reload() }) { Icon(Icons.Filled.Refresh, "Refresh") }
-                    IconButton(onClick = { vm.toggleBookmark() }, enabled = tab?.url?.startsWith("http") == true) { Icon(if (bookmarked) Icons.Filled.Star else Icons.Filled.StarBorder, "Bookmark") }
+                // Full 48 dp touch targets for the toolbar buttons (accessibility).
+                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { vm.back() }, enabled = tab?.canGoBack == true, modifier = Modifier.size(48.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back") }
+                    IconButton(onClick = { vm.forward() }, enabled = tab?.canGoForward == true, modifier = Modifier.size(48.dp)) { Icon(Icons.AutoMirrored.Filled.ArrowForward, "Forward") }
+                    IconButton(onClick = { vm.reload() }, modifier = Modifier.size(48.dp)) { Icon(Icons.Filled.Refresh, "Refresh") }
+                    IconButton(onClick = { vm.toggleBookmark() }, enabled = tab?.url?.startsWith("http") == true, modifier = Modifier.size(48.dp)) { Icon(if (bookmarked) Icons.Filled.Star else Icons.Filled.StarBorder, "Bookmark") }
                 }
                 if ((tab?.progress ?: 100) < 100) LinearProgressIndicator(progress = { (tab?.progress ?: 0) / 100f }, modifier = Modifier.fillMaxWidth())
                 findQuery?.let { q ->
