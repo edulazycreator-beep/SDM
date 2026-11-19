@@ -802,11 +802,12 @@ fun BrowserScreen(initialUrl: String? = null) {
     Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
         Surface(tonalElevation = 2.dp) {
             Column {
-                Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                // Fixed height so the 48 dp buttons always fit fully beside the 56 dp address field.
+                Row(Modifier.fillMaxWidth().height(64.dp).padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { vm.back() }, enabled = tab?.canGoBack == true) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") }
                     if (tab?.isPrivate == true) Text("Private", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(start = 6.dp))
                     OutlinedTextField(
-                        address, { address = it }, Modifier.weight(1f).padding(4.dp), singleLine = true,
+                        address, { address = it }, Modifier.weight(1f).padding(horizontal = 4.dp), singleLine = true,
                         placeholder = { Text("Search or enter address", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                         leadingIcon = if (tab?.secure == true) { { Icon(Icons.Outlined.Lock, "Secure connection", modifier = Modifier.size(18.dp)) } } else null,
                         trailingIcon = { IconButton(onClick = { vm.reload() }) { Icon(Icons.Outlined.Refresh, "Refresh") } },
