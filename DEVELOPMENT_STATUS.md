@@ -1,6 +1,6 @@
 # SDM — Development status
 
-Last updated: 2026-11-18 · Branch: `develop` · CI: GitHub Actions (`.github/workflows/ci.yml`)
+Last updated: 2026-11-19 · Branch: `develop` · CI: GitHub Actions (`.github/workflows/ci.yml`)
 
 ## Current phase
 All seven phases of the master spec have been implemented to a first complete version. Phase 6
@@ -94,6 +94,24 @@ been run yet (see "Not yet verified").
   fixture in `testdata/hls`) → quality chip → download → MP4 with both tracks in MediaStore.
 - Not yet verified on a device: real-world sites (detection while playing, remux of their streams),
   torrents with real swarms, FTP/SFTP against real servers, widget and tile on launchers.
+
+## Brand, Premium and Play preparation (2026-11-19, ADR-0010)
+- New logo (docs/brand/sdm-logo.png) traced to vectors: adaptive launcher icon with monochrome
+  layer, animated splash icon (wordmark springs in, download arrow drops with a bounce, then zooms
+  out into the app), onboarding and Premium headers. Play icon 512 px and feature graphic in docs/brand.
+- Brand colors everywhere: logo blue #375C9E (dark theme #A9C2F4) and navy #10264D; wallpaper colors
+  are now off by default (saved choices reset once). The home-screen widget uses the brand colors.
+- Onboarding: swipeable pages with parallax, animated logo, floating icons, animated page dots and
+  button label.
+- Tidy-ups: bottom navigation labels stay on one line (11 sp); every text-field hint is one line
+  with an ellipsis.
+- Flavors `github` (complete, Premium included) and `play` (Play billing, YouTube blocked).
+- SDM Premium (Play): subscription `sdm_premium` (monthly, yearly; 3-day free trial offer set in
+  Play Console) and one-time `sdm_premium_lifetime`. Unlocks all accent colors, wallpaper colors and
+  AMOLED black; no download feature is locked. Trial and renewal terms shown before purchase;
+  purchases acknowledged; restore and "Manage subscription" provided.
+- CI signs release builds with the upload key when the `SDM_KEYSTORE_*` secrets exist.
+- Not verified yet: real purchases (need the app on a Play testing track with the products created).
 
 ## UI tidy-up (2026-11-19)
 - Poppins (bundled, SIL OFL) as the app font with adjusted type scale; outlined (minimal) icons

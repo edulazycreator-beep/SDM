@@ -18,6 +18,7 @@ class SdmApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        com.sdm.core.common.SourcePolicy.blockVideoPlatforms = BuildConfig.PLAY_STORE
         // Recovers interrupted downloads and starts the dispatcher (spec section 6.4).
         coordinator.start()
         widgets.start()

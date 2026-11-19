@@ -7,9 +7,9 @@
     </style>
 
     <style name="Theme.SDM.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/sdm_splash_bg</item>
+        <item name="windowSplashScreenBackground">@color/sdm_splash_brand</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash</item>
-        <item name="windowSplashScreenIconBackgroundColor">@color/sdm_blue</item>
+        <item name="windowSplashScreenAnimationDuration">900</item>
         <item name="postSplashScreenTheme">@style/Theme.SDM</item>
     </style>
 </resources>

@@ -445,7 +445,7 @@ class BrowserViewModel @Inject constructor(
     // ------------------------------------------------------------------ media detection
 
     private fun observe(tabId: String, url: String) {
-        if (!Urls.isValidHttpUrl(url)) return
+        if (!Urls.isValidHttpUrl(url) || blockedSource(tabId, url)) return
         when (HlsParser.streamKindOfUrl(url)) {
             StreamKind.HLS -> onStreamUrl(tabId, url, "HLS")
             StreamKind.DASH -> onStreamUrl(tabId, url, "DASH")
@@ -460,6 +460,7 @@ class BrowserViewModel @Inject constructor(
     }
 
     private fun onStreamUrl(tabId: String, url: String, kind: String = "HLS") {
+        if (blockedSource(tabId, url)) return
         val scan = scan(tabId)
         if (url in scan.children || !scan.seen.add(url)) return
         addMedia(tabId, DetectedMedia(url, "Video stream", kind, stream = true, title = scan.title, pending = true))
@@ -491,7 +492,12 @@ class BrowserViewModel @Inject constructor(
         }
     }
 
+    /** Pages and media the Play build may not download from are not scanned at all. */
+    private fun blockedSource(tabId: String, url: String) =
+        com.sdm.core.common.SourcePolicy.isBlocked(url) || com.sdm.core.common.SourcePolicy.isBlocked(_ui.value.tabs.firstOrNull { it.id == tabId }?.url)
+
     private fun onMediaEvent(tabId: String, event: String, rawUrl: String, tag: String, durationSec: Double, height: Int, title: String) {
+        if (blockedSource(tabId, rawUrl)) return
         val scan = scan(tabId)
         if (title.isNotBlank()) scan.title = title.take(120)
         val url = rawUrl.trim()
@@ -567,6 +573,7 @@ class BrowserViewModel @Inject constructor(
         viewModelScope.launch {
             var added = 0; var skipped = 0
             for (l in links) {
+                if (com.sdm.core.common.SourcePolicy.isBlocked(l.url)) { skipped++; continue }
                 if (downloads.findDuplicate(l.url, l.name, null) != null) { skipped++; continue }
                 runCatching {
                     downloads.enqueue(com.sdm.core.data.download.NewDownload(url = l.url, fileName = FileNames.sanitize(l.name), headers = headersFor(tab.id, l.url), sourcePageUrl = tab.url))
@@ -800,7 +807,7 @@ fun BrowserScreen(initialUrl: String? = null) {
                     if (tab?.isPrivate == true) Text("Private", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.tertiary, modifier = Modifier.padding(start = 6.dp))
                     OutlinedTextField(
                         address, { address = it }, Modifier.weight(1f).padding(4.dp), singleLine = true,
-                        placeholder = { Text("Search or enter address") },
+                        placeholder = { Text("Search or enter address", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                         leadingIcon = if (tab?.secure == true) { { Icon(Icons.Outlined.Lock, "Secure connection", modifier = Modifier.size(18.dp)) } } else null,
                         trailingIcon = { IconButton(onClick = { vm.reload() }) { Icon(Icons.Outlined.Refresh, "Refresh") } },
                         shape = RoundedCornerShape(24.dp),
@@ -835,7 +842,7 @@ fun BrowserScreen(initialUrl: String? = null) {
                 if ((tab?.progress ?: 100) < 100) LinearProgressIndicator(progress = { (tab?.progress ?: 0) / 100f }, modifier = Modifier.fillMaxWidth())
                 findQuery?.let { q ->
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(horizontal = 8.dp)) {
-                        OutlinedTextField(q, { findQuery = it; vm.find(it) }, Modifier.weight(1f), singleLine = true, placeholder = { Text("Find in page") })
+                        OutlinedTextField(q, { findQuery = it; vm.find(it) }, Modifier.weight(1f), singleLine = true, placeholder = { Text("Find in page", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) })
                         Text(ui.findCount?.let { "${it.first}/${it.second}" } ?: "", modifier = Modifier.padding(horizontal = 6.dp))
                         TextButton(onClick = { vm.findNext(false) }) { Text("▲") }
                         TextButton(onClick = { vm.findNext(true) }) { Text("▼") }

@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_bg">#F7F8FD</color>
-    <color name="widget_text">#151729</color>
-    <color name="widget_muted">#565B73</color>
-    <color name="widget_accent">#3657C2</color>
+    <!-- SDM brand colors (logo blue #375C9E, navy #10264D). -->
+    <color name="widget_bg">#F6F8FC</color>
+    <color name="widget_text">#10264D</color>
+    <color name="widget_muted">#55607A</color>
+    <color name="widget_accent">#375C9E</color>
     <color name="widget_on_accent">#FFFFFF</color>
-    <color name="widget_tonal">#E3E8FA</color>
-    <color name="widget_on_tonal">#1D2E6B</color>
-    <color name="widget_track">#DCE0EE</color>
+    <color name="widget_tonal">#E2E9F5</color>
+    <color name="widget_on_tonal">#1D3766</color>
+    <color name="widget_track">#D9E0EC</color>
 </resources>

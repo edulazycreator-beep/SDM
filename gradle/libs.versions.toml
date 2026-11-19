@@ -23,6 +23,7 @@ work = "2.10.2"
 webkit = "1.13.0"
 hiltNavigation = "1.2.0"
 splashscreen = "1.0.1"
+playBilling = "9.1.0"
 documentfile = "1.0.1"
 junit = "4.13.2"
 turbine = "1.2.0"
@@ -54,6 +55,7 @@ hilt-work = { module = "androidx.hilt:hilt-work", version.ref = "hiltNavigation"
 hilt-androidx-compiler = { module = "androidx.hilt:hilt-compiler", version.ref = "hiltNavigation" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 androidx-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "splashscreen" }
+play-billing = { module = "com.android.billingclient:billing", version.ref = "playBilling" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle" }

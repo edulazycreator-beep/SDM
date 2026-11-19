@@ -577,7 +577,7 @@ Scheduler	Penjadwal
 Search	Cari
 Search file names	Cari nama file
 Search files	Cari file
-Search or enter address	Cari atau masukkan alamat
+Search or enter address	Cari atau ketik URL
 Secure connection	Koneksi aman
 Segment failure rate	Tingkat kegagalan segmen
 Select all	Pilih semua
@@ -767,7 +767,6 @@ Built with AndroidX, Jetpack Compose, Media3, OkHttp, Apache Commons Net, JSch, 
 Language	Bahasa
 English	English
 Bahasa Indonesia	Bahasa Indonesia
-Close	Tutup
 Advanced options	Opsi lanjutan
 {} connections	{} koneksi
 Subtitles	Subtitle
@@ -791,3 +790,50 @@ Playback failed ({}).	Pemutaran gagal ({}).
 Tap Resume all to continue	Ketuk Lanjutkan semua untuk meneruskan
 Copy a link, then tap Paste link	Salin link, lalu ketuk Tempel link
 Waiting to start	Menunggu dimulai
+Welcome to SDM	Selamat datang di SDM
+Downloads from YouTube aren't available in the Google Play version of SDM.	Unduhan dari YouTube tidak tersedia di versi Google Play SDM.
+SDM Premium	SDM Premium
+SDM Premium is active	SDM Premium aktif
+Thank you for supporting SDM	Terima kasih telah mendukung SDM
+More colors, AMOLED black · 3-day free trial	Lebih banyak warna, AMOLED hitam · uji coba gratis 3 hari
+More colors, wallpaper colors and AMOLED black come with SDM Premium.	Warna lain, warna dari wallpaper, dan AMOLED hitam tersedia di SDM Premium.
+Premium · Use colors from your wallpaper	Premium · Pakai warna dari wallpaper
+Premium	Premium
+PREMIUM	PREMIUM
+Every accent color	Semua warna aksen
+Choose the color SDM uses for buttons, progress and highlights.	Pilih warna SDM untuk tombol, progres, dan sorotan.
+Colors from your wallpaper	Warna dari wallpaper
+SDM follows your wallpaper on Android 12 and newer.	SDM mengikuti warna wallpaper di Android 12 ke atas.
+AMOLED black theme	Tema AMOLED hitam
+True black background that saves battery on OLED screens.	Latar hitam pekat yang hemat baterai di layar OLED.
+Support SDM	Dukung SDM
+Every download feature stays free. Premium keeps SDM ad-free and growing.	Semua fitur unduhan tetap gratis. Premium membuat SDM tetap tanpa iklan dan terus berkembang.
+All Premium features are included in this version of SDM.	Semua fitur Premium sudah termasuk di versi SDM ini.
+SDM Premium is active. Thank you for supporting SDM!	SDM Premium aktif. Terima kasih telah mendukung SDM!
+Manage subscription	Kelola langganan
+Restore purchases	Pulihkan pembelian
+Premium plans could not be loaded.	Paket Premium tidak bisa dimuat.
+Premium plans could not be loaded. Try again later.	Paket Premium tidak bisa dimuat. Coba lagi nanti.
+Google Play billing isn't available. Install SDM from Google Play and sign in to the Play Store.	Pembayaran Google Play tidak tersedia. Instal SDM dari Google Play dan masuk ke Play Store.
+Could not reach Google Play. Try again later.	Tidak bisa terhubung ke Google Play. Coba lagi nanti.
+Premium restored	Premium dipulihkan
+No Premium purchase found for this Google account	Tidak ada pembelian Premium untuk akun Google ini
+Thank you! Premium is unlocked.	Terima kasih! Premium sudah terbuka.
+Payment pending. Premium unlocks when Google Play confirms it.	Pembayaran tertunda. Premium terbuka setelah Google Play mengonfirmasi.
+This plan isn't available in your country yet.	Paket ini belum tersedia di negara Anda.
+No connection to Google Play. Check your internet and try again.	Tidak ada koneksi ke Google Play. Periksa internet lalu coba lagi.
+Purchase failed. Please try again.	Pembelian gagal. Silakan coba lagi.
+Yearly	Tahunan
+Monthly	Bulanan
+Lifetime	Seumur hidup
+One-time purchase	Sekali beli
+{} days free	Gratis {} hari
+Pay once, keep Premium on this Google account	Bayar sekali, Premium tetap di akun Google ini
+Start {}-day free trial	Mulai uji coba gratis {} hari
+Buy once	Beli sekali
+Subscribe	Berlangganan
+One payment of {}. No subscription.	Satu kali bayar {}. Bukan langganan.
+Free for {} days, then {} per {}. Cancel anytime in Google Play before the trial ends and you won't be charged.	Gratis {} hari, lalu {} per {}. Batalkan kapan saja di Google Play sebelum uji coba berakhir agar tidak ditagih.
+{} per {}, renews automatically until you cancel in Google Play.	{} per {}, diperpanjang otomatis sampai Anda membatalkan di Google Play.
+year	tahun
+month	bulan

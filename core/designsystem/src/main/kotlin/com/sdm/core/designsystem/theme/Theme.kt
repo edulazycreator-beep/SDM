@@ -24,10 +24,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-/** SDM brand palette (spec section 2): blue primary, cyan secondary, semantic status colors. */
+/** SDM brand palette: the logo blue (#375C9E, navy #10264D) as primary, cyan secondary, semantic status colors. */
 object SdmColors {
-    val Blue = Color(0xFF1F5EFF)
-    val BlueDark = Color(0xFF8DB0FF)
+    val Blue = Color(0xFF375C9E)
+    val Navy = Color(0xFF10264D)
+    val BlueDark = Color(0xFFA9C2F4)
     val Cyan = Color(0xFF00A5C8)
     val CyanDark = Color(0xFF5FD4F0)
     val Success = Color(0xFF1E9E5A)
@@ -36,7 +37,7 @@ object SdmColors {
     val Charcoal = Color(0xFF14171C)
     val CharcoalSurface = Color(0xFF1C2027)
     val Neutral = Color(0xFFF7F8FA)
-    val accents = listOf(0xFF1F5EFF, 0xFF00A5C8, 0xFF6B4EFF, 0xFF1E9E5A, 0xFFE0532F, 0xFFD6336C)
+    val accents = listOf(0xFF375C9E, 0xFF1F5EFF, 0xFF00A5C8, 0xFF6B4EFF, 0xFF1E9E5A, 0xFFE0532F, 0xFFD6336C)
 }
 
 @Immutable
@@ -55,7 +56,7 @@ private val compact = Spacing(2.dp, 6.dp, 8.dp, 12.dp, 18.dp, 6.dp)
 enum class SdmThemeMode { SYSTEM, LIGHT, DARK, AMOLED }
 
 private fun light(accent: Color) = lightColorScheme(
-    primary = accent, onPrimary = Color.White, primaryContainer = accent.copy(alpha = 0.14f).compositeOverWhite(), onPrimaryContainer = Color(0xFF001A52),
+    primary = accent, onPrimary = Color.White, primaryContainer = accent.copy(alpha = 0.14f).compositeOverWhite(), onPrimaryContainer = SdmColors.Navy,
     secondary = SdmColors.Cyan, onSecondary = Color.White, secondaryContainer = Color(0xFFCDF3FB), onSecondaryContainer = Color(0xFF00313D),
     tertiary = SdmColors.Success, background = SdmColors.Neutral, surface = Color.White, surfaceVariant = Color(0xFFEDEFF3),
     surfaceContainer = Color(0xFFF1F3F7), surfaceContainerHigh = Color(0xFFEBEEF3), surfaceContainerLow = Color(0xFFF7F8FA),
@@ -66,7 +67,7 @@ private fun dark(accent: Color, amoled: Boolean): ColorScheme {
     val bg = if (amoled) Color.Black else SdmColors.Charcoal
     val surface = if (amoled) Color.Black else SdmColors.CharcoalSurface
     return darkColorScheme(
-        primary = accent.lighten(), onPrimary = Color(0xFF00205F), primaryContainer = accent.copy(alpha = 0.35f), onPrimaryContainer = Color.White,
+        primary = if (accent == SdmColors.Blue) SdmColors.BlueDark else accent.lighten(), onPrimary = SdmColors.Navy, primaryContainer = accent.copy(alpha = 0.35f), onPrimaryContainer = Color.White,
         secondary = SdmColors.CyanDark, onSecondary = Color(0xFF00363F), tertiary = Color(0xFF5BD08F), background = bg, surface = surface,
         surfaceVariant = if (amoled) Color(0xFF111111) else Color(0xFF262B33), surfaceContainer = if (amoled) Color(0xFF0B0B0B) else Color(0xFF20242B),
         surfaceContainerHigh = if (amoled) Color(0xFF141414) else Color(0xFF282D35), surfaceContainerLow = if (amoled) Color.Black else Color(0xFF1A1D23),
@@ -120,7 +121,7 @@ private val SdmShapes = Shapes(
 @Composable
 fun SdmTheme(
     mode: SdmThemeMode = SdmThemeMode.SYSTEM,
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     accent: Color = SdmColors.Blue,
     compactLayout: Boolean = false,
     animations: Boolean = true,

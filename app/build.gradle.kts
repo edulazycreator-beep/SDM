@@ -23,6 +23,20 @@ android {
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64") }
     }
 
+    // github: the APK published on GitHub, all Premium features included, no Play billing.
+    // play: the Google Play bundle, with Premium sold through Play billing and no YouTube downloads.
+    flavorDimensions += "store"
+    productFlavors {
+        create("github") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY_STORE", "false")
+        }
+        create("play") {
+            dimension = "store"
+            buildConfigField("boolean", "PLAY_STORE", "true")
+        }
+    }
+
     signingConfigs {
         if (ciKeystore != null) {
             create("release") {
@@ -76,6 +90,7 @@ dependencies {
     implementation(project(":core:designsystem"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.splashscreen)
+    implementation(libs.play.billing)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)

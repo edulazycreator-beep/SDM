@@ -101,9 +101,11 @@ class ImportExportRepository @Inject constructor(
     private suspend fun importList(items: List<ExportedDownload>, rejected: List<String>, startPaused: Boolean): ImportSummary {
         val known = db.downloads().all().map { it.originalUrl }.toSet()
         var imported = 0; var dup = 0
+        val blocked = mutableListOf<String>()
         val s = settings.current()
         for (e in items) {
             if (e.url in known) { dup++; continue }
+            if (com.sdm.core.common.SourcePolicy.isBlocked(e.url)) { blocked += e.url; continue }
             val name = e.fileName?.let { FileNames.sanitize(it) } ?: FileNames.resolve(e.url, null, null)
             downloads.enqueue(NewDownload(
                 url = e.url, fileName = name, sizeBytes = null, connections = e.connections ?: s.defaultConnections,
@@ -112,7 +114,7 @@ class ImportExportRepository @Inject constructor(
             ))
             imported++
         }
-        return ImportSummary(imported, dup, rejected)
+        return ImportSummary(imported, dup, rejected + blocked)
     }
 
     suspend fun backupSettings(uri: Uri) {

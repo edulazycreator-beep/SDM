@@ -48,13 +48,15 @@ Requirements: JDK 17 and the Android SDK (platform 37). Then:
 
 ```bash
 ./gradlew test                 # JVM unit tests (domain, engine with test server, common)
-./gradlew connectedDebugAndroidTest   # instrumented tests on a device/emulator
-./gradlew assembleRelease bundleRelease
+./gradlew connectedGithubDebugAndroidTest   # instrumented tests on a device/emulator
+./gradlew assembleGithubRelease      # the APK published on GitHub (all features, Premium included)
+./gradlew bundlePlayRelease          # the Google Play bundle (Play billing, no YouTube downloads)
 ```
 
-Release signing reads `SDM_KEYSTORE_PATH`, `SDM_KEYSTORE_PASSWORD`, `SDM_KEY_ALIAS` and
-`SDM_KEY_PASSWORD` from the environment. In CI, store the keystore as a base64 secret and decode it
-to a file before the build.
+There are two build flavors (ADR-0010): `github` and `play`. Release signing reads
+`SDM_KEYSTORE_PATH`, `SDM_KEYSTORE_PASSWORD`, `SDM_KEY_ALIAS` and `SDM_KEY_PASSWORD` from the
+environment. CI decodes the repository secret `SDM_KEYSTORE_BASE64` into that file
+(see docs/PLAY_STORE.md for creating the key and the secrets).
 
 ## Project layout
 

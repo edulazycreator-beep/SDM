@@ -23,6 +23,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.WorkspacePremium
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.Analytics
 import androidx.compose.material.icons.outlined.ArrowDownward
 import androidx.compose.material.icons.outlined.ArrowUpward
@@ -99,8 +102,9 @@ import javax.inject.Inject
 import kotlin.math.roundToInt
 
 @HiltViewModel
-class SettingsViewModel @Inject constructor(private val repo: SettingsRepository) : ViewModel() {
+class SettingsViewModel @Inject constructor(private val repo: SettingsRepository, premiumRepo: com.sdm.downloadmanager.premium.PremiumRepository) : ViewModel() {
     val settings = repo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, AppSettings())
+    val premium = premiumRepo.state
     fun update(f: (AppSettings) -> AppSettings) = viewModelScope.launch { repo.update(f) }
 }
 
@@ -119,7 +123,9 @@ private fun SettingsPage(title: String, root: Boolean = false, content: @Composa
 fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsState()
     val app = LocalAppActions.current
+    val premium by vm.premium.collectAsState()
     SettingsPage("Settings", root = true) {
+        if (!premium.includedInBuild) PremiumBanner(premium.unlocked) { app.nav.navigate(com.sdm.downloadmanager.ui.PremiumRoute) }
         SettingsGroup("General") {
             NavRow("Appearance", "${s.themeMode.name.lowercase().replaceFirstChar { it.uppercase() }} theme · ${if (s.density == LayoutDensity.COMPACT) "Compact" else "Comfortable"}", Icons.Outlined.Palette) { app.nav.navigate(AppearanceRoute) }
             NavRow("Downloads", "${s.defaultConnections} connections · ${s.maxConcurrent} at once · ${s.speedLimitProfile.label}", Icons.Outlined.Download) { app.nav.navigate(DownloadSettingsRoute) }
@@ -146,6 +152,9 @@ fun SettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
 @Composable
 fun AppearanceScreen(vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsState()
+    val premium = vm.premium.collectAsState().value.unlocked
+    val app = LocalAppActions.current
+    val openPremium = { app.nav.navigate(com.sdm.downloadmanager.ui.PremiumRoute) }
     SettingsPage("Appearance") {
         SectionHeader("Language")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -155,19 +164,36 @@ fun AppearanceScreen(vm: SettingsViewModel = hiltViewModel()) {
         }
         SectionHeader("Theme")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            ThemeMode.entries.forEach { m -> FilterChip(s.themeMode == m, { vm.update { it.copy(themeMode = m) } }, { Text(when (m) { ThemeMode.SYSTEM -> "System"; ThemeMode.LIGHT -> "Light"; ThemeMode.DARK -> "Dark"; ThemeMode.AMOLED -> "AMOLED black" }) }) }
-        }
-        SwitchRow("Dynamic color", s.dynamicColor, { v -> vm.update { it.copy(dynamicColor = v) } }, if (Build.VERSION.SDK_INT >= 31) "Use colors from your wallpaper" else "Requires Android 12", enabled = Build.VERSION.SDK_INT >= 31)
-        Text("Accent color", style = MaterialTheme.typography.bodyLarge)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 8.dp)) {
-            SdmColors.accents.forEach { a ->
-                Box(
-                    Modifier.size(36.dp).background(Color(a.toInt()), CircleShape)
-                        .then(if (s.accentArgb == a) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
-                        .clickable { vm.update { it.copy(accentArgb = a, dynamicColor = false) } },
+            ThemeMode.entries.forEach { m ->
+                val locked = m == ThemeMode.AMOLED && !premium
+                FilterChip(
+                    s.themeMode == m && !locked,
+                    { if (locked) openPremium() else vm.update { it.copy(themeMode = m) } },
+                    { Text(when (m) { ThemeMode.SYSTEM -> "System"; ThemeMode.LIGHT -> "Light"; ThemeMode.DARK -> "Dark"; ThemeMode.AMOLED -> "AMOLED black" }) },
+                    leadingIcon = if (locked) { { Icon(Icons.Outlined.Lock, "Premium", Modifier.size(16.dp)) } } else null,
                 )
             }
         }
+        SwitchRow(
+            "Dynamic color", premium && s.dynamicColor,
+            { v -> if (!premium) openPremium() else vm.update { it.copy(dynamicColor = v) } },
+            when { Build.VERSION.SDK_INT < 31 -> "Requires Android 12"; !premium -> "Premium · Use colors from your wallpaper"; else -> "Use colors from your wallpaper" },
+            enabled = Build.VERSION.SDK_INT >= 31,
+        )
+        Text("Accent color", style = MaterialTheme.typography.bodyLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(vertical = 8.dp)) {
+            SdmColors.accents.forEach { a ->
+                val locked = !premium && a != SdmColors.accents.first()
+                val selected = if (premium) s.accentArgb == a && !s.dynamicColor else a == SdmColors.accents.first()
+                Box(
+                    Modifier.size(36.dp).background(Color(a.toInt()), CircleShape)
+                        .then(if (selected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+                        .clickable { if (locked) openPremium() else vm.update { it.copy(accentArgb = a, dynamicColor = false) } },
+                    contentAlignment = Alignment.Center,
+                ) { if (locked) Icon(Icons.Outlined.Lock, "Premium", Modifier.size(16.dp), tint = Color.White) }
+            }
+        }
+        if (!premium) Text("More colors, wallpaper colors and AMOLED black come with SDM Premium.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SectionHeader("Layout")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             FilterChip(s.density == LayoutDensity.COMFORTABLE, { vm.update { it.copy(density = LayoutDensity.COMFORTABLE) } }, { Text("Comfortable") })
@@ -261,7 +287,7 @@ fun NetworkSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         Text("Read timeout: ${s.readTimeoutSeconds}s")
         Slider(s.readTimeoutSeconds.toFloat(), { v -> vm.update { it.copy(readTimeoutSeconds = v.roundToInt()) } }, valueRange = 5f..300f)
         SectionHeader("User agent")
-        OutlinedTextField(ua, { ua = it }, Modifier.fillMaxWidth(), placeholder = { Text("Default SDM user agent") }, singleLine = true)
+        OutlinedTextField(ua, { ua = it }, Modifier.fillMaxWidth(), placeholder = { Text("Default SDM user agent", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }, singleLine = true)
         TextButton(onClick = { vm.update { it.copy(userAgent = ua.trim()) } }) { Text("Save user agent") }
         SectionHeader("DNS")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { DnsMode.entries.forEach { m -> FilterChip(s.dnsMode == m, { vm.update { it.copy(dnsMode = m) } }, { Text(m.label) }) } }
@@ -297,5 +323,26 @@ fun AboutScreen() {
         Text("Built with AndroidX, Jetpack Compose, Media3, OkHttp, Apache Commons Net, JSch, libtorrent (libtorrent4j), Mozilla Readability and the StevenBlack/hosts list (MIT). Full list and licenses: docs/THIRD_PARTY_NOTICES.md in the source repository.", style = MaterialTheme.typography.bodySmall)
         TextButton(onClick = { ctx.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${ctx.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }) { Text("App info and permissions") }
         Icon(Icons.Outlined.AutoAwesome, null, tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Settings entry for Premium: an invitation before purchase, a thank-you after. */
+@Composable
+private fun PremiumBanner(unlocked: Boolean, onClick: () -> Unit) {
+    androidx.compose.material3.Surface(
+        onClick = onClick, shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp), color = Color.Transparent,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 4.dp),
+    ) {
+        Row(
+            Modifier.background(com.sdm.downloadmanager.ui.BrandGradient).padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(Icons.Outlined.WorkspacePremium, null, tint = Color.White, modifier = Modifier.size(28.dp))
+            Column(Modifier.weight(1f).padding(start = 14.dp)) {
+                Text(if (unlocked) "SDM Premium is active" else "SDM Premium", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                Text(if (unlocked) "Thank you for supporting SDM" else "More colors, AMOLED black · 3-day free trial", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f))
+            }
+            Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = Color.White)
+        }
     }
 }

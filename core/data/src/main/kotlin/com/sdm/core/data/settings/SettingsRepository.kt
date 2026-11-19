@@ -37,8 +37,8 @@ enum class DashboardWidget(val label: String) {
 @kotlinx.serialization.Serializable
 data class AppSettings(
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val dynamicColor: Boolean = true,
-    val accentArgb: Long = 0xFF1F5EFF,
+    val dynamicColor: Boolean = false,
+    val accentArgb: Long = 0xFF375C9E,
     val density: LayoutDensity = LayoutDensity.COMFORTABLE,
     val haptics: Boolean = true,
     val animations: Boolean = true,
@@ -85,7 +85,7 @@ private val Context.store: DataStore<Preferences> by preferencesDataStore(name =
 @Singleton
 class SettingsRepository @Inject constructor(@ApplicationContext private val context: Context) {
     private object K {
-        val theme = stringPreferencesKey("theme"); val dynamic = booleanPreferencesKey("dynamic"); val accent = longPreferencesKey("accent")
+        val theme = stringPreferencesKey("theme"); val dynamic = booleanPreferencesKey("dynamic_v2"); val accent = longPreferencesKey("accent_v2")
         val density = stringPreferencesKey("density"); val haptics = booleanPreferencesKey("haptics"); val animations = booleanPreferencesKey("animations")
         val connections = intPreferencesKey("connections"); val profile = stringPreferencesKey("profile"); val autoConn = booleanPreferencesKey("auto_conn")
         val limitProfile = stringPreferencesKey("limit_profile"); val customLimit = longPreferencesKey("custom_limit"); val maxConcurrent = intPreferencesKey("max_concurrent")

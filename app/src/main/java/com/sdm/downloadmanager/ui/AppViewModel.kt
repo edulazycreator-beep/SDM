@@ -33,8 +33,11 @@ data class AddRequest(
 class AppViewModel @Inject constructor(
     private val settingsRepo: SettingsRepository,
     private val clipboard: ClipboardInspector,
+    val premium: com.sdm.downloadmanager.premium.PremiumRepository,
 ) : ViewModel() {
     val settings: StateFlow<AppSettings?> = settingsRepo.settings.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    init { premium.refresh() }
 
     private val _addRequest = MutableStateFlow<AddRequest?>(null)
     val addRequest = _addRequest.asStateFlow()

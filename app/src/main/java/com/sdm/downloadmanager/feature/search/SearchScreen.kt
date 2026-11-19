@@ -85,7 +85,7 @@ fun SearchScreen(vm: SearchViewModel = hiltViewModel()) {
     SdmScaffold("Search", onBack = { app.nav.popBackStack() }) { p ->
         LazyColumn(Modifier.padding(p).padding(horizontal = 16.dp)) {
             item {
-                OutlinedTextField(f.query, { q -> vm.update { it.copy(query = q) } }, Modifier.fillMaxWidth(), placeholder = { Text("File name, link, page title…") }, singleLine = true)
+                OutlinedTextField(f.query, { q -> vm.update { it.copy(query = q) } }, Modifier.fillMaxWidth(), placeholder = { Text("File name, link, page title…", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }, singleLine = true)
                 Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     FilterChip(f.status == null, { vm.update { it.copy(status = null) } }, { Text("Any status") })
                     listOf(DownloadState.DOWNLOADING, DownloadState.QUEUED, DownloadState.PAUSED, DownloadState.COMPLETED, DownloadState.FAILED).forEach { s ->
@@ -94,7 +94,7 @@ fun SearchScreen(vm: SearchViewModel = hiltViewModel()) {
                 }
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { SizeFilter.entries.forEach { s -> FilterChip(f.size == s, { vm.update { it.copy(size = s) } }, { Text(s.label) }) } }
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) { DateFilter.entries.forEach { d -> FilterChip(f.date == d, { vm.update { it.copy(date = d) } }, { Text(d.label) }) } }
-                OutlinedTextField(f.ext, { e -> vm.update { it.copy(ext = e.take(8)) } }, Modifier.fillMaxWidth(), placeholder = { Text("Extension (e.g. zip)") }, singleLine = true)
+                OutlinedTextField(f.ext, { e -> vm.update { it.copy(ext = e.take(8)) } }, Modifier.fillMaxWidth(), placeholder = { Text("Extension (e.g. zip)", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }, singleLine = true)
             }
             if (r.downloads.isNotEmpty()) item { SectionHeader("Downloads (${r.downloads.size})") }
             items(r.downloads, key = { "d${it.id}" }) { d ->

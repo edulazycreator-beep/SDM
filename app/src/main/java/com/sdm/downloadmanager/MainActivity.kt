@@ -24,6 +24,15 @@ class MainActivity : ComponentActivity() {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         splash.setKeepOnScreenCondition { appViewModel.settings.value == null }
+        splash.setOnExitAnimationListener { provider ->
+            // Let the logo animation finish, then zoom the logo out while the splash fades away.
+            val left = runCatching { provider.iconAnimationStartMillis + provider.iconAnimationDurationMillis - System.currentTimeMillis() }.getOrDefault(0L)
+            provider.view.postDelayed({
+                val ease = android.view.animation.PathInterpolator(0.3f, 0f, 0.8f, 0.15f)
+                runCatching { provider.iconView }.getOrNull()?.animate()?.scaleX(1.18f)?.scaleY(1.18f)?.alpha(0f)?.setDuration(260)?.setInterpolator(ease)?.start()
+                provider.view.animate().alpha(0f).setStartDelay(80).setDuration(260).withEndAction { provider.remove() }.start()
+            }, left.coerceIn(0L, 900L))
+        }
         enableEdgeToEdge()
         handleIntent(intent)
         setContent { SdmApp(appViewModel) }

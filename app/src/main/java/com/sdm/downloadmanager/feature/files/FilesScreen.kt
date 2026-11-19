@@ -236,7 +236,7 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
         },
     ) { padding ->
         Column(Modifier.padding(padding)) {
-            if (searching) OutlinedTextField(ui.query, vm::setQuery, Modifier.fillMaxWidth().padding(horizontal = sp.l), placeholder = { Text("Search file names") }, singleLine = true)
+            if (searching) OutlinedTextField(ui.query, vm::setQuery, Modifier.fillMaxWidth().padding(horizontal = sp.l), placeholder = { Text("Search file names", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }, singleLine = true)
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(horizontal = sp.l), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 FilterChip(ui.category == null, { vm.setCategory(null) }, { Text("All files") })
                 FileCategory.entries.forEach { c -> FilterChip(ui.category == c, { vm.setCategory(c) }, { Text(c.label) }) }

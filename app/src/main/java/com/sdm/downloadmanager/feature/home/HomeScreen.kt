@@ -238,7 +238,7 @@ fun MultiUrlDialog(onDismiss: () -> Unit, onSubmit: (String) -> Unit) {
             Column {
                 Text("Paste links separated by new lines or spaces. Each link is checked before it is added.", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth().height(180.dp), placeholder = { Text("https://…") })
+                OutlinedTextField(text, { text = it }, Modifier.fillMaxWidth().height(180.dp), placeholder = { Text("https://…", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) })
                 Text("$count valid link(s)", style = MaterialTheme.typography.labelSmall)
             }
         },

@@ -151,6 +151,9 @@ class AddDownloadViewModel @Inject constructor(
     }
 
     private fun inspect(rawUrl: String) = viewModelScope.launch {
+        if (com.sdm.core.common.SourcePolicy.isBlocked(rawUrl) || com.sdm.core.common.SourcePolicy.isBlocked(request?.sourcePage)) {
+            _step.value = AddStep.Input(rawUrl, com.sdm.core.common.SourcePolicy.MESSAGE); return@launch
+        }
         _step.value = AddStep.Inspecting
         // ftp://user:password@host/... : the login moves into the encrypted headers, never into the stored link.
         var url = rawUrl
@@ -323,7 +326,7 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                 text = {
                     Column {
                         OutlinedTextField(
-                            text, { text = it }, Modifier.fillMaxWidth(), label = { Text("Link") }, placeholder = { Text("https://example.com/file.zip") },
+                            text, { text = it }, Modifier.fillMaxWidth(), label = { Text("Link") }, placeholder = { Text("https://example.com/file.zip", maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) },
                             isError = s.error != null, supportingText = { s.error?.let { Text(it) } }, singleLine = false, maxLines = 4,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                             trailingIcon = {

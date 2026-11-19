@@ -153,6 +153,7 @@ class DownloadRepository @Inject constructor(
         SpeedIntelligence.recommend(Urls.host(url), analytics.observations(), userMax, settings.current().speedProfile)
 
     suspend fun enqueue(input: NewDownload): Long {
+        require(!com.sdm.core.common.SourcePolicy.isBlocked(input.url) && !com.sdm.core.common.SourcePolicy.isBlocked(input.sourcePageUrl)) { com.sdm.core.common.SourcePolicy.MESSAGE }
         // Never store FTP/SFTP passwords in the link itself: move them into the encrypted headers.
         val n = if (com.sdm.engine.remote.RemoteFileEngine.handles(input.url)) {
             val (clean, login) = com.sdm.engine.remote.RemoteLogin.split(input.url)

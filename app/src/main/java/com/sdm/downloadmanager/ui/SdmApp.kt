@@ -24,6 +24,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import com.sdm.core.designsystem.i18n.Text
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -111,10 +113,12 @@ fun SdmApp(vm: AppViewModel) {
 private fun SdmAppContent(vm: AppViewModel) {
     val settings by vm.settings.collectAsState()
     val s = settings ?: return
+    // AMOLED black, other accents and wallpaper colors are Premium; without it SDM keeps its brand look.
+    val premium = vm.premium.state.collectAsState().value.unlocked
     SdmTheme(
-        mode = when (s.themeMode) { ThemeMode.SYSTEM -> SdmThemeMode.SYSTEM; ThemeMode.LIGHT -> SdmThemeMode.LIGHT; ThemeMode.DARK -> SdmThemeMode.DARK; ThemeMode.AMOLED -> SdmThemeMode.AMOLED },
-        dynamicColor = s.dynamicColor,
-        accent = Color(s.accentArgb.toInt()),
+        mode = when (s.themeMode) { ThemeMode.SYSTEM -> SdmThemeMode.SYSTEM; ThemeMode.LIGHT -> SdmThemeMode.LIGHT; ThemeMode.DARK -> SdmThemeMode.DARK; ThemeMode.AMOLED -> if (premium) SdmThemeMode.AMOLED else SdmThemeMode.DARK },
+        dynamicColor = premium && s.dynamicColor,
+        accent = if (premium) Color(s.accentArgb.toInt()) else com.sdm.core.designsystem.theme.SdmColors.Blue,
         compactLayout = s.density == LayoutDensity.COMPACT,
         animations = s.animations,
     ) {
@@ -157,7 +161,7 @@ private fun SdmAppContent(vm: AppViewModel) {
             Row(Modifier.fillMaxSize()) {
                 if (wide && showBars) NavigationRail {
                     topLevels.forEach { t ->
-                        NavigationRailItem(selected = dest?.hierarchy?.any { t.matches(it) } == true, onClick = { go(t.route) }, icon = { Icon(t.icon, t.label) }, label = { Text(t.label) })
+                        NavigationRailItem(selected = dest?.hierarchy?.any { t.matches(it) } == true, onClick = { go(t.route) }, icon = { Icon(t.icon, t.label) }, label = { Text(t.label, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, letterSpacing = 0.sp)) })
                     }
                 }
                 val bottomBar = !wide && showBars
@@ -180,7 +184,7 @@ private fun SdmAppContent(vm: AppViewModel) {
                     bottomBar = {
                         if (bottomBar) NavigationBar {
                             topLevels.forEach { t ->
-                                NavigationBarItem(selected = dest?.hierarchy?.any { t.matches(it) } == true, onClick = { go(t.route) }, icon = { Icon(t.icon, t.label) }, label = { Text(t.label) })
+                                NavigationBarItem(selected = dest?.hierarchy?.any { t.matches(it) } == true, onClick = { go(t.route) }, icon = { Icon(t.icon, t.label) }, label = { Text(t.label, maxLines = 1, softWrap = false, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, letterSpacing = 0.sp)) })
                             }
                         }
                     },
@@ -208,6 +212,7 @@ private fun SdmAppContent(vm: AppViewModel) {
                         composable<ImportExportRoute> { ImportExportScreen() }
                         composable<DownloadSettingsRoute> { DownloadSettingsScreen() }
                         composable<AppearanceRoute> { AppearanceScreen() }
+                        composable<PremiumRoute> { com.sdm.downloadmanager.feature.premium.PremiumScreen() }
                     }
                 }
             }
