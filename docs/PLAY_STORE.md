@@ -47,13 +47,13 @@ subscriptions renew every few minutes.
   connections when the server allows it, pauses and resumes safely, and checks every file before
   calling it complete. Its built-in browser finds downloadable files and video streams (HLS and
   DASH) on the pages you visit and keeps your sign-in for downloads, with an ad blocker and reader
-  view. SDM also handles torrents and magnet links, extracts ZIP archives, keeps private files behind
-  your screen lock, receives links from your computer over Wi‑Fi, and has schedules, rules,
-  analytics, a home-screen widget and a Quick Settings tile. SDM does not download from YouTube and
+  view. SDM also extracts ZIP archives and has schedules, rules, analytics, a home-screen widget and
+  a Quick Settings tile. SDM does not download from YouTube and
   does not bypass logins, paywalls or DRM.
-  SDM Premium (optional): more accent colors, colors from your wallpaper and the AMOLED black theme.
-  Monthly or yearly subscription with a 3-day free trial, or a one-time purchase. Every download
-  feature is free.
+  SDM Premium (optional): torrents and magnet links, FTP/FTPS/SFTP, up to 16 connections and 10
+  downloads at once, download all files on a page, automatic ZIP extraction, private folder, send
+  links from a computer, and more colors with AMOLED black. Monthly or yearly subscription with a
+  3-day free trial, or a one-time purchase.
 - **Graphics**: icon `docs/brand/play-icon-512.png`, feature graphic `docs/brand/play-feature-1024x500.png`.
   Screenshots: Home, Downloads, Browser with a detected video, Add dialog, Files, Premium.
 - **Category**: Tools. **Contains ads**: No. **In-app purchases**: Yes.

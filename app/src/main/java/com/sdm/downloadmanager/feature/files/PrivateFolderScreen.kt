@@ -101,6 +101,9 @@ fun PrivateFolderScreen(vm: PrivateFolderViewModel = hiltViewModel()) {
             !unlocked -> EmptyState(Icons.Outlined.Lock, "Locked", "Files here are only visible in SDM and are not backed up.", Modifier.padding(p)) {
                 Button(onClick = { unlock() }) { Text("Unlock") }
             }
+            // Files already inside stay reachable without Premium; only moving new ones in needs it.
+            files.isEmpty() && !com.sdm.downloadmanager.ui.LocalPremium.current ->
+                com.sdm.downloadmanager.ui.PremiumUpsell(com.sdm.core.common.PremiumFeature.PRIVATE_FOLDER, Modifier.padding(p).padding(16.dp))
             files.isEmpty() -> EmptyState(Icons.Outlined.Lock, "Nothing here yet", "In Files, open a file's menu and choose \"Move to private folder\".", Modifier.padding(p))
             else -> LazyColumn(Modifier.fillMaxSize().padding(p)) {
                 items(files, key = { it.path }) { f ->

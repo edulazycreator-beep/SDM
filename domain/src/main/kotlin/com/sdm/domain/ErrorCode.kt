@@ -14,6 +14,7 @@ enum class ErrorCode(val title: String, val description: String, val suggestion:
     RANGE_NOT_SATISFIABLE("Range not satisfiable", "The server rejected the resume position (HTTP 416).", "Restart the download from the beginning.", false),
     TOO_MANY_REQUESTS("Too many requests", "The server is rate limiting (HTTP 429).", "SDM waits as the server asks and uses fewer connections for this host.", true),
     SERVER_ERROR("Server error", "The server reported an internal error (HTTP 5xx).", "Usually temporary; SDM retries with backoff.", true),
+    REQUIRES_PREMIUM("Requires Premium", "This download uses a feature included in SDM Premium.", "Unlock it in Settings › SDM Premium, then retry.", false),
     INVALID_RESPONSE("Invalid server response", "The server response could not be used (unexpected status or headers).", "Retry; if it repeats, the link may not point to a downloadable file.", false),
     INSUFFICIENT_STORAGE("Insufficient storage", "There is not enough free space for this file.", "Free some space or choose another destination, then resume.", false),
     FILE_TOO_LARGE("File too large for destination", "The destination file system cannot hold a file this large (FAT32 has a 4 GB limit).", "Choose internal storage or an exFAT-formatted card.", false),

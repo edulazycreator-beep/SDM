@@ -832,7 +832,11 @@ fun BrowserScreen(initialUrl: String? = null) {
                             DropdownMenuItem(text = { Text("Find in page") }, onClick = { menu = false; findQuery = "" })
                             DropdownMenuItem(text = { Text(if (tab?.reader == true) "Exit reader view" else "Reader view") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; vm.toggleReader() })
                             DropdownMenuItem(text = { Text("Site settings" + (tab?.blocked?.takeIf { it > 0 }?.let { " · $it blocked" } ?: "")) }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; siteSheet = true })
-                            DropdownMenuItem(text = { Text("Download files on this page") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; vm.scanLinks { pageLinks = it } })
+                            DropdownMenuItem(
+                                text = { Text("Download files on this page") }, enabled = tab?.url?.startsWith("http") == true,
+                                trailingIcon = if (!com.sdm.downloadmanager.ui.LocalPremium.current) { { com.sdm.downloadmanager.ui.PremiumTag() } } else null,
+                                onClick = { menu = false; if (!com.sdm.core.common.Entitlements.premium) app.nav.navigate(com.sdm.downloadmanager.ui.PremiumRoute) else vm.scanLinks { pageLinks = it } },
+                            )
                             DropdownMenuItem(text = { Text(if (settings?.desktopMode == true) "Mobile site" else "Desktop site") }, onClick = { menu = false; vm.toggleDesktopMode() })
                             DropdownMenuItem(text = { Text("Share link") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; tab?.url?.let(ctx::shareText) })
                             DropdownMenuItem(text = { Text("Open in external browser") }, enabled = tab?.url?.startsWith("http") == true, onClick = { menu = false; tab?.url?.let(ctx::openInBrowser) })

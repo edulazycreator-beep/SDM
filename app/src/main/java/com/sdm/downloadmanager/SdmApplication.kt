@@ -12,6 +12,8 @@ class SdmApplication : Application(), Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
     @Inject lateinit var coordinator: DownloadCoordinator
     @Inject lateinit var widgets: com.sdm.downloadmanager.feature.widget.WidgetUpdater
+    // Created before the coordinator starts so queued downloads see the right Premium state.
+    @Inject lateinit var premium: com.sdm.downloadmanager.premium.PremiumRepository
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()

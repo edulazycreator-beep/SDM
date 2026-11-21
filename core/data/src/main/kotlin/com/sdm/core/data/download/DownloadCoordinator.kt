@@ -193,7 +193,7 @@ class DownloadCoordinator @Inject constructor(
 
         // Retry timers that are due.
         dao.inStates(listOf(DownloadState.RETRYING)).filter { (it.nextRetryAt ?: 0) <= now && !running.containsKey(it.id) }.forEach { d ->
-            if (net.connected && running.size < settings.maxConcurrent) launchRun(d.id, DownloadEvent.RETRY_NOW)
+            if (net.connected && running.size < com.sdm.core.common.Entitlements.maxConcurrent(settings.maxConcurrent)) launchRun(d.id, DownloadEvent.RETRY_NOW)
         }
         // Network came back.
         if (net.connected) dao.inStates(listOf(DownloadState.WAITING_FOR_NETWORK)).forEach { transition(it.id, DownloadEvent.NETWORK_RESTORED) }
@@ -223,7 +223,7 @@ class DownloadCoordinator @Inject constructor(
             }
             if (d.holdReason != hold) dao.setHold(d.id, hold)
             if (hold != HoldReason.NONE) continue
-            if (running.size >= settings.maxConcurrent) break
+            if (running.size >= com.sdm.core.common.Entitlements.maxConcurrent(settings.maxConcurrent)) break
             launchRun(d.id, DownloadEvent.START)
         }
         dao.inStates(listOf(DownloadState.RETRYING)).mapNotNull { it.nextRetryAt }.minOrNull()?.let { nextWake = minOf(nextWake ?: Long.MAX_VALUE, it) }
@@ -263,6 +263,8 @@ class DownloadCoordinator @Inject constructor(
     private suspend fun runDownload(id: Long) {
         var entity = dao.get(id) ?: return
         val run = running[id] ?: return
+        val premiumOnly = entity.streamType == STREAM_TORRENT || com.sdm.engine.remote.RemoteFileEngine.handles(entity.originalUrl)
+        if (premiumOnly && !com.sdm.core.common.Entitlements.premium) { fail(entity, ErrorCode.REQUIRES_PREMIUM, ErrorCode.REQUIRES_PREMIUM.description, null); return }
         if (entity.streamType == STREAM_TORRENT) { runTorrent(id, entity, run); return }
         if (entity.streamType in STREAM_TYPES) { runStream(id, entity, run); return }
         val sink = try {
@@ -340,10 +342,11 @@ class DownloadCoordinator @Inject constructor(
     }
 
     private suspend fun chooseConnections(e: DownloadEntity): Int {
-        if (!settings.autoConnections) return e.maxConnections.coerceIn(1, 16)
-        val rec = SpeedIntelligence.recommend(Urls.host(e.originalUrl), analytics.observations(), userMax = e.maxConnections, fallback = settings.speedProfile)
+        val cap = com.sdm.core.common.Entitlements.maxConnections()
+        if (!settings.autoConnections) return e.maxConnections.coerceIn(1, cap)
+        val rec = SpeedIntelligence.recommend(Urls.host(e.originalUrl), analytics.observations(), userMax = e.maxConnections.coerceAtMost(cap), fallback = settings.speedProfile)
         if (rec.connections != e.maxConnections) event(e.id, EventType.RULE_APPLIED, "Speed Intelligence: ${rec.connections} connection(s). ${rec.basis}")
-        return rec.connections
+        return rec.connections.coerceIn(1, cap)
     }
 
     private inner class RunListener(private val id: Long, private val run: Running) : TransferListener {
@@ -690,7 +693,7 @@ class DownloadCoordinator @Inject constructor(
             analytics.session(e, r.stats, succeeded = true)
             db.files().upsert(listOf(FileIndexEntity(finalUri, e.fileName, r.totalBytes, e.mimeType, e.category, now(), e.destinationLabel, e.id, if (e.checksumAlgorithm.equals("SHA-256", true) || e.checksumAlgorithm.equals("SHA256", true)) r.checksumHex else null, null, e.destinationTreeUri)))
             notifier.completed(e.toDomain(), finalUri)
-            if (settings.autoExtractZip && com.sdm.core.data.archive.ArchiveExtractor.isZip(e.fileName, e.mimeType)) extractAfterDownload(e, finalUri)
+            if (settings.autoExtractZip && com.sdm.core.common.Entitlements.premium && com.sdm.core.data.archive.ArchiveExtractor.isZip(e.fileName, e.mimeType)) extractAfterDownload(e, finalUri)
         }
     }
 

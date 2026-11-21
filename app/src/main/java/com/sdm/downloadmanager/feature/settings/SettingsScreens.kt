@@ -226,16 +226,36 @@ private fun <T> List<T>.move(item: T, by: Int): List<T> {
 fun DownloadSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
     val s by vm.settings.collectAsState()
     var custom by remember(s.customLimitBps) { mutableStateOf((s.customLimitBps / 1024).toString()) }
+    val premium = com.sdm.downloadmanager.ui.LocalPremium.current
+    val app = LocalAppActions.current
+    val openPremium = { app.nav.navigate(com.sdm.downloadmanager.ui.PremiumRoute) }
+    val freeConcurrent = com.sdm.core.common.Entitlements.FREE_MAX_CONCURRENT
     SettingsPage("Downloads") {
         SectionHeader("Connections")
         Text("Default connections per download", style = MaterialTheme.typography.bodyLarge)
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { CONNECTION_PROFILES.forEach { n -> FilterChip(s.defaultConnections == n, { vm.update { it.copy(defaultConnections = n) } }, { Text("$n") }) } }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            CONNECTION_PROFILES.forEach { n ->
+                val locked = !premium && n > com.sdm.core.common.Entitlements.FREE_MAX_CONNECTIONS
+                FilterChip(
+                    s.defaultConnections == n && !locked, { if (locked) openPremium() else vm.update { it.copy(defaultConnections = n) } }, { Text("$n") },
+                    leadingIcon = if (locked) { { Icon(Icons.Outlined.Lock, "Premium", Modifier.size(14.dp)) } } else null,
+                )
+            }
+        }
         Text("More connections are not always faster. SDM only uses several when the server supports ranges.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("Speed profile", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { SpeedProfile.entries.forEach { p -> FilterChip(s.speedProfile == p, { vm.update { it.copy(speedProfile = p) } }, { Text(p.label) }) } }
         SwitchRow("Speed Intelligence picks connections", s.autoConnections, { v -> vm.update { it.copy(autoConnections = v) } }, "Uses measured results per server, never above the download's limit")
-        Text("Simultaneous downloads: ${s.maxConcurrent}", style = MaterialTheme.typography.bodyLarge)
-        Slider(s.maxConcurrent.toFloat(), { v -> vm.update { it.copy(maxConcurrent = v.roundToInt()) } }, valueRange = 1f..10f, steps = 8)
+        val shownConcurrent = com.sdm.core.common.Entitlements.maxConcurrent(s.maxConcurrent)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Simultaneous downloads: $shownConcurrent", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+            if (!premium) com.sdm.downloadmanager.ui.PremiumTag()
+        }
+        Slider(shownConcurrent.toFloat(), { v ->
+            val n = v.roundToInt()
+            if (!premium && n > freeConcurrent) openPremium() else vm.update { it.copy(maxConcurrent = n) }
+        }, valueRange = 1f..10f, steps = 8)
+        if (!premium) Text("Up to $freeConcurrent at once; Premium allows up to 10.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SectionHeader("Speed limit")
         FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) { SpeedLimitProfile.entries.forEach { p -> FilterChip(s.speedLimitProfile == p, { vm.update { it.copy(speedLimitProfile = p) } }, { Text(p.label) }) } }
         if (s.speedLimitProfile == SpeedLimitProfile.CUSTOM) OutlinedTextField(
@@ -249,7 +269,10 @@ fun DownloadSettingsScreen(vm: SettingsViewModel = hiltViewModel()) {
         Text("Longest wait between retries: ${Formatters.duration(s.retryBackoffCapSeconds.toLong())}", style = MaterialTheme.typography.bodyLarge)
         Slider(s.retryBackoffCapSeconds.toFloat(), { v -> vm.update { it.copy(retryBackoffCapSeconds = v.roundToInt()) } }, valueRange = 10f..3600f)
         SwitchRow("Resume interrupted downloads on start", s.autoResumeOnStart, { v -> vm.update { it.copy(autoResumeOnStart = v) } })
-        SwitchRow("Extract ZIP files automatically", s.autoExtractZip, { v -> vm.update { it.copy(autoExtractZip = v) } }, "Unpacks into a folder next to the .zip when it finishes. The .zip is kept.")
+        SwitchRow(
+            "Extract ZIP files automatically", premium && s.autoExtractZip, { v -> if (!premium) openPremium() else vm.update { it.copy(autoExtractZip = v) } },
+            if (premium) "Unpacks into a folder next to the .zip when it finishes. The .zip is kept." else "Premium · You can still extract any ZIP from its details.",
+        )
         SectionHeader("Browser")
         SwitchRow("Block ads and trackers", s.adBlock, { v -> vm.update { it.copy(adBlock = v) } }, "Faster pages and fewer ad videos in the media list. Can be turned off per site.")
         SwitchRow("Offer to download playing videos", s.announceVideos, { v -> vm.update { it.copy(announceVideos = v) } }, "Shows \"Video detected — Download\" when a video starts playing")
@@ -340,7 +363,7 @@ private fun PremiumBanner(unlocked: Boolean, onClick: () -> Unit) {
             Icon(Icons.Outlined.WorkspacePremium, null, tint = Color.White, modifier = Modifier.size(28.dp))
             Column(Modifier.weight(1f).padding(start = 14.dp)) {
                 Text(if (unlocked) "SDM Premium is active" else "SDM Premium", style = MaterialTheme.typography.titleMedium, color = Color.White)
-                Text(if (unlocked) "Thank you for supporting SDM" else "More colors, AMOLED black · 3-day free trial", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f))
+                Text(if (unlocked) "Thank you for supporting SDM" else "Torrents, FTP/SFTP, 16 connections and more · 3-day free trial", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.85f))
             }
             Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = Color.White)
         }

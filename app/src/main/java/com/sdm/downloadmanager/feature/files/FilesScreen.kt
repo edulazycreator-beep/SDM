@@ -282,7 +282,11 @@ fun FilesScreen(vm: FilesViewModel = hiltViewModel()) {
                                         DropdownMenuItem(text = { Text("Share") }, onClick = { menu = false; ctx.shareFiles(listOf(vm.shareUri(f)), listOf(f.mimeType)) })
                                         DropdownMenuItem(text = { Text("Rename") }, onClick = { menu = false; renameItem = f })
                                         DropdownMenuItem(text = { Text("Details and checksum") }, onClick = { menu = false; details = f })
-                                        DropdownMenuItem(text = { Text("Move to private folder") }, onClick = { menu = false; movePrivate = f })
+                                        DropdownMenuItem(
+                                            text = { Text("Move to private folder") },
+                                            trailingIcon = if (!com.sdm.downloadmanager.ui.LocalPremium.current) { { com.sdm.downloadmanager.ui.PremiumTag() } } else null,
+                                            onClick = { menu = false; if (com.sdm.core.common.Entitlements.premium) movePrivate = f else app.nav.navigate(com.sdm.downloadmanager.ui.PremiumRoute) },
+                                        )
                                         DropdownMenuItem(text = { Text("Delete") }, onClick = { menu = false; vm.clear(); vm.toggle(f.uri); confirmDelete = true })
                                     }
                                 }

@@ -1,5 +1,7 @@
 package com.sdm.downloadmanager.feature.add
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -180,7 +182,8 @@ class AddDownloadViewModel @Inject constructor(
         val decision = repo.applyRules(info)
         val dup = repo.findDuplicate(info.url, info.fileName, info.sizeBytes)
         val rec = runCatching { repo.recommendation(info.finalUrl, s.defaultConnections) }.getOrNull()
-        val connections = decision.connections ?: if (s.autoConnections && rec != null) rec.connections else s.defaultConnections
+        val connections = (decision.connections ?: if (s.autoConnections && rec != null) rec.connections else s.defaultConnections)
+            .coerceAtMost(com.sdm.core.common.Entitlements.maxConnections())
         val folder = decision.treeUri?.let { t -> files.grantedFolders().firstOrNull { it.treeUri == t } }
         _step.value = AddStep.Confirm(
             info = info, fileName = info.fileName, decision = decision, duplicate = dup, recommendation = rec,
@@ -371,6 +374,15 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
         )
         is AddStep.Confirm -> {
             var advanced by rememberSaveable { mutableStateOf(false) }
+            val premium = com.sdm.downloadmanager.ui.LocalPremium.current
+            val appActions = com.sdm.downloadmanager.ui.LocalAppActions.current
+            val scheme = s.info.url.substringBefore("://").lowercase()
+            val locked = when {
+                premium -> null
+                s.torrent -> com.sdm.core.common.PremiumFeature.TORRENT
+                scheme == "ftp" || scheme == "ftps" || scheme == "sftp" -> com.sdm.core.common.PremiumFeature.REMOTE
+                else -> null
+            }
             AlertDialog(
                 onDismissRequest = onDismiss,
                 title = { Text("Download file") },
@@ -385,6 +397,7 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             }
                         }
                         s.info.error?.let { Warning(it) }
+                        locked?.let { com.sdm.downloadmanager.ui.PremiumUpsell(it, Modifier.padding(top = 12.dp), onOpen = onDismiss) }
                         if (s.torrentCapable) {
                             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 4.dp)) {
                                 Text("Download the torrent's files", modifier = Modifier.weight(1f))
@@ -464,7 +477,14 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                             Column {
                             if (!s.torrent) Text(if (s.stream != null) "Parallel segments" else "Connections", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
                             if (!s.torrent) FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                (if (s.stream != null) listOf(1, 2, 4, 8) else CONNECTION_PROFILES).forEach { n -> FilterChip(s.connections == n, { vm.update { it.copy(connections = n) } }, { Text("$n") }, enabled = s.info.rangeSupported || n == 1) }
+                                (if (s.stream != null) listOf(1, 2, 4, 8) else CONNECTION_PROFILES).forEach { n ->
+                                    val lockedN = !premium && n > com.sdm.core.common.Entitlements.FREE_MAX_CONNECTIONS
+                                    FilterChip(
+                                        s.connections == n, { if (lockedN) { onDismiss(); appActions.nav.navigate(com.sdm.downloadmanager.ui.PremiumRoute) } else vm.update { it.copy(connections = n) } }, { Text("$n") },
+                                        enabled = s.info.rangeSupported || n == 1,
+                                        leadingIcon = if (lockedN) { { androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.Outlined.Lock, "Premium", Modifier.size(14.dp)) } } else null,
+                                    )
+                                }
                             }
                             s.recommendation?.takeIf { it.sampleCount > 0 }?.let { Text("Suggested: ${it.connections} · ${it.basis}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary) }
                             Text("Network", style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
@@ -498,7 +518,8 @@ fun AddDownloadDialog(request: AddRequest, onDismiss: () -> Unit, vm: AddDownloa
                     }
                 },
                 confirmButton = {
-                    if (s.duplicate == null) TextButton(onClick = { vm.confirm() }, enabled = s.fileName.isNotBlank() && (s.stream == null || (s.stream.blockedReason == null && s.streamOption != null))) { Text(if (s.decision.askConfirmation) "Confirm download" else "Download") }
+                    if (locked != null) Unit
+                    else if (s.duplicate == null) TextButton(onClick = { vm.confirm() }, enabled = s.fileName.isNotBlank() && (s.stream == null || (s.stream.blockedReason == null && s.streamOption != null))) { Text(if (s.decision.askConfirmation) "Confirm download" else "Download") }
                     else Column(horizontalAlignment = Alignment.End) {
                         TextButton(onClick = { vm.confirm(DuplicateResolution.DOWNLOAD_ANYWAY) }) { Text("Download anyway") }
                         if (s.duplicate.kind != DuplicateKind.SAME_URL_ACTIVE) TextButton(onClick = { vm.confirm(DuplicateResolution.REPLACE_EXISTING) }) { Text("Replace existing") }

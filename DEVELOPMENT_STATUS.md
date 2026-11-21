@@ -107,8 +107,11 @@ been run yet (see "Not yet verified").
   with an ellipsis.
 - Flavors `github` (complete, Premium included) and `play` (Play billing, YouTube blocked).
 - SDM Premium (Play): subscription `sdm_premium` (monthly, yearly; 3-day free trial offer set in
-  Play Console) and one-time `sdm_premium_lifetime`. Unlocks all accent colors, wallpaper colors and
-  AMOLED black; no download feature is locked. Trial and renewal terms shown before purchase;
+  Play Console) and one-time `sdm_premium_lifetime`. Since 2026-11-21 it unlocks torrents,
+  FTP/FTPS/SFTP, 16 connections, more than 3 simultaneous downloads, "Download files on this page",
+  automatic ZIP extraction, moving files into the private folder, sending links from a computer, and
+  the extra colors/AMOLED. Enforced in the UI (lock tags, upsell cards) and in the coordinator
+  (`Entitlements`, `ErrorCode.REQUIRES_PREMIUM`). The GitHub build has everything. Trial and renewal terms shown before purchase;
   purchases acknowledged; restore and "Manage subscription" provided.
 - CI signs release builds with the upload key when the `SDM_KEYSTORE_*` secrets exist.
 - Not verified yet: real purchases (need the app on a Play testing track with the products created).

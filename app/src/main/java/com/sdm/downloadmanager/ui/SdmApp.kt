@@ -148,7 +148,7 @@ private fun SdmAppContent(vm: AppViewModel) {
         LaunchedEffect(openDownload) {
             openDownload?.let { nav.navigate(DetailsRoute(it)); vm.consumeOpenDownload() }
         }
-        CompositionLocalProvider(LocalAppActions provides actions) {
+        CompositionLocalProvider(LocalAppActions provides actions, LocalPremium provides premium) {
             val wide = LocalConfiguration.current.screenWidthDp >= 600
             val entry by nav.currentBackStackEntryAsState()
             val dest = entry?.destination

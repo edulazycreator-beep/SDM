@@ -28,10 +28,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Computer
+import androidx.compose.material.icons.outlined.Dns
+import androidx.compose.material.icons.outlined.FolderZip
+import androidx.compose.material.icons.outlined.Hub
+import androidx.compose.material.icons.outlined.Link
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Palette
-import androidx.compose.material.icons.outlined.Wallpaper
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -76,10 +81,15 @@ class PremiumViewModel @Inject constructor(val repo: PremiumRepository) : ViewMo
 private data class Benefit(val icon: ImageVector, val title: String, val body: String)
 
 private val benefits = listOf(
-    Benefit(Icons.Outlined.Palette, "Every accent color", "Choose the color SDM uses for buttons, progress and highlights."),
-    Benefit(Icons.Outlined.Wallpaper, "Colors from your wallpaper", "SDM follows your wallpaper on Android 12 and newer."),
-    Benefit(Icons.Outlined.DarkMode, "AMOLED black theme", "True black background that saves battery on OLED screens."),
-    Benefit(Icons.Outlined.FavoriteBorder, "Support SDM", "Every download feature stays free. Premium keeps SDM ad-free and growing."),
+    Benefit(Icons.Outlined.Hub, "Torrents and magnet links", "Download torrents and magnet links inside SDM, with pause and resume."),
+    Benefit(Icons.Outlined.Speed, "Faster downloads", "Up to 16 connections per download and up to 10 downloads at once (free: 8 and 3)."),
+    Benefit(Icons.Outlined.Dns, "FTP, FTPS and SFTP", "Download from file servers, with your login stored encrypted."),
+    Benefit(Icons.Outlined.Link, "Download all files on a page", "Pick every file a page links to and download them in one go."),
+    Benefit(Icons.Outlined.FolderZip, "Extract ZIP files automatically", "Archives unpack into a folder as soon as they finish."),
+    Benefit(Icons.Outlined.Lock, "Private folder", "Keep files hidden from the gallery and other apps, behind your screen lock."),
+    Benefit(Icons.Outlined.Computer, "Send links from a computer", "Paste links on your PC and they start downloading on your phone."),
+    Benefit(Icons.Outlined.Palette, "Your colors", "Every accent color, colors from your wallpaper and the AMOLED black theme."),
+    Benefit(Icons.Outlined.FavoriteBorder, "Support SDM", "Keeps SDM ad-free and growing."),
 )
 
 @Composable

@@ -82,6 +82,12 @@ class PremiumRepository @Inject constructor(@ApplicationContext private val cont
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val connectLock = Mutex()
 
+    init {
+        // Downloads, the queue and workers read this; keep it in step with Premium.
+        com.sdm.core.common.Entitlements.premium = _state.value.unlocked
+        scope.launch { state.collect { com.sdm.core.common.Entitlements.premium = it.unlocked } }
+    }
+
     private val client: BillingClient by lazy {
         BillingClient.newBuilder(context)
             .setListener(this)

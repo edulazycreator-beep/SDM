@@ -131,8 +131,14 @@ fun QueueScreen(vm: QueueViewModel = hiltViewModel()) {
                             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         SwitchRow("Pause queue", ui.paused, vm::setPaused, "No new downloads start while the queue is paused")
-                        Text("Simultaneous downloads: ${ui.maxConcurrent}", style = MaterialTheme.typography.bodyMedium)
-                        Slider(ui.maxConcurrent.toFloat(), { vm.setMax(it.roundToInt()) }, valueRange = 1f..10f, steps = 8)
+                        val premium = com.sdm.downloadmanager.ui.LocalPremium.current
+                        val actions = com.sdm.downloadmanager.ui.LocalAppActions.current
+                        val shown = com.sdm.core.common.Entitlements.maxConcurrent(ui.maxConcurrent)
+                        Text("Simultaneous downloads: $shown", style = MaterialTheme.typography.bodyMedium)
+                        Slider(shown.toFloat(), {
+                            val n = it.roundToInt()
+                            if (!premium && n > com.sdm.core.common.Entitlements.FREE_MAX_CONCURRENT) actions.nav.navigate(com.sdm.downloadmanager.ui.PremiumRoute) else vm.setMax(n)
+                        }, valueRange = 1f..10f, steps = 8)
                         Text("Order", style = MaterialTheme.typography.labelLarge)
                         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             QueueOrdering.entries.forEach { o -> FilterChip(ui.ordering == o, { vm.setOrdering(o) }, { Text(o.label) }) }

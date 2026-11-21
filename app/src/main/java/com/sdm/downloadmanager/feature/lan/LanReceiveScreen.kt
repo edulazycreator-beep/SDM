@@ -52,7 +52,7 @@ class LanReceiveViewModel @Inject constructor(
     val ui = _ui.asStateFlow()
     private var server: LanLinkServer? = null
 
-    init { start() }
+    init { if (com.sdm.core.common.Entitlements.premium) start() }
 
     private fun localAddress(): InetAddress? {
         val cm = context.getSystemService(ConnectivityManager::class.java) ?: return null
@@ -94,6 +94,10 @@ fun LanReceiveScreen(vm: LanReceiveViewModel = hiltViewModel()) {
     val ui by vm.ui.collectAsState()
     val app = LocalAppActions.current
     SdmScaffold(title = "Send from computer", onBack = { app.nav.popBackStack() }) { p ->
+        if (!com.sdm.downloadmanager.ui.LocalPremium.current) {
+            com.sdm.downloadmanager.ui.PremiumUpsell(com.sdm.core.common.PremiumFeature.LAN, Modifier.padding(p).padding(16.dp))
+            return@SdmScaffold
+        }
         if (ui.address == null) {
             EmptyState(Icons.Outlined.WifiOff, "Not on Wi-Fi", ui.error ?: "Connect to Wi-Fi first.", Modifier.padding(p))
             return@SdmScaffold
