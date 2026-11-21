@@ -1,0 +1,224 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  checks: write
+
+jobs:
+  build:
+    name: Build, unit tests, lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve Gradle plugins (retries flaky repository lookups)
+        shell: bash
+        run: |
+          for i in 1 2 3 4; do
+            ./gradlew --no-daemon -q help && exit 0
+            echo "Plugin resolution failed (attempt $i); retrying in 20 s"; sleep 20
+          done
+          exit 1
+
+      - name: Release signing key (optional repository secrets)
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SDM_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/sdm-upload.jks"
+            echo "SDM_KEYSTORE_PATH=$RUNNER_TEMP/sdm-upload.jks" >> "$GITHUB_ENV"
+            echo "::notice title=Signing::Release builds are signed with the SDM upload key"
+          else
+            echo "::notice title=Signing::No SDM_KEYSTORE_BASE64 secret; release builds use the CI debug key (not accepted by Google Play)"
+          fi
+
+      - name: Build and test
+        id: gradle
+        shell: bash
+        env:
+          SDM_KEYSTORE_PASSWORD: ${{ secrets.SDM_KEYSTORE_PASSWORD }}
+          SDM_KEY_ALIAS: ${{ secrets.SDM_KEY_ALIAS }}
+          SDM_KEY_PASSWORD: ${{ secrets.SDM_KEY_PASSWORD }}
+        run: |
+          set -o pipefail
+          # github flavor: the APKs published here; play flavor: the bundle for Google Play.
+          ./gradlew --no-daemon --stacktrace --continue \
+            checkModuleDependencies \
+            test -x :app:test :app:testGithubDebugUnitTest :app:testPlayDebugUnitTest \
+            :app:lintGithubDebug \
+            assembleGithubDebug assembleGithubRelease assemblePlayRelease bundlePlayRelease 2>&1 | tee build.log
+
+      - name: Report build errors
+        if: failure()
+        shell: bash
+        run: |
+          grep -E "^e: |error:|What went wrong|Could not (find|resolve)|FAILED|Execution failed|Caused by|Unresolved|expected|AssertionError|at com\.sdm|> " build.log \
+            | grep -v "^> Task" | head -150 > errors.txt || true
+          msg=$(sed -e 's/%/%25/g' errors.txt | awk 'BEGIN{ORS="%0A"} {print}')
+          echo "::error title=Gradle errors::${msg}"
+          { echo '## Gradle errors'; echo '```'; cat errors.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Test summary
+        if: always()
+        shell: bash
+        run: |
+          total=0; failed=0
+          for f in $(find . -path '*/build/test-results/*' -name 'TEST-*.xml' 2>/dev/null); do
+            t=$(grep -o 'tests="[0-9]*"' "$f" | head -1 | grep -o '[0-9]*'); total=$((total + ${t:-0}))
+            x=$(grep -o 'failures="[0-9]*"' "$f" | head -1 | grep -o '[0-9]*'); failed=$((failed + ${x:-0}))
+          done
+          echo "Unit tests: $total run, $failed failed" | tee -a "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Unit tests::$total run, $failed failed"
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports
+          path: |
+            build.log
+            **/build/reports/**
+            **/build/test-results/**
+          retention-days: 7
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sdm-apk
+          path: |
+            app/build/outputs/apk/github/debug/*.apk
+            app/build/outputs/apk/github/release/*.apk
+            app/build/outputs/apk/play/release/*.apk
+            app/build/outputs/bundle/playRelease/*.aab
+
+  instrumented:
+    name: Instrumented tests (emulator API 34)
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Resolve Gradle plugins (retries flaky repository lookups)
+        shell: bash
+        run: |
+          for i in 1 2 3 4; do
+            ./gradlew --no-daemon -q help && exit 0
+            echo "Plugin resolution failed (attempt $i); retrying in 20 s"; sleep 20
+          done
+          exit 1
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run connected tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            bash -c "set -o pipefail; ./gradlew --no-daemon connectedGithubDebugAndroidTest 2>&1 | tee connected.log"
+            ./gradlew --no-daemon assembleGithubRelease
+            adb uninstall com.sdm.downloadmanager || true
+            adb install -r app/build/outputs/apk/github/release/app-github-release.apk
+            adb logcat -c
+            adb shell am start -W -n com.sdm.downloadmanager/.MainActivity
+            sleep 10
+            adb shell am start -W -a android.intent.action.SEND -t text/plain --es android.intent.extra.TEXT https://example.com/file.zip -n com.sdm.downloadmanager/.MainActivity
+            sleep 8
+            adb logcat -d > release-smoke.log
+            if grep -E "FATAL EXCEPTION|AndroidRuntime: Process: com.sdm" release-smoke.log; then echo "::error title=Release smoke test::The minified release APK crashed"; grep -A30 "FATAL EXCEPTION" release-smoke.log | head -60; exit 1; fi
+            adb shell pidof com.sdm.downloadmanager && echo "Release APK running without crash"
+      - name: Report instrumented results
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob, re, html
+          out = []
+          for f in glob.glob('**/build/outputs/androidTest-results/**/*.xml', recursive=True):
+              t = open(f, encoding='utf-8', errors='replace').read()
+              for m in re.finditer(r'<testcase name="([^"]+)" classname="([^"]+)"[^>]*?(?:/>|>(.*?)</testcase>)', t, re.S):
+                  body = m.group(3) or ''
+                  if '<failure' in body:
+                      msg = html.unescape(re.search(r'<failure[^>]*>(.*?)</failure>', body, re.S).group(1))
+                      out.append(f"FAIL {m.group(2)}.{m.group(1)}\n{msg[:4000]}")
+                  else:
+                      out.append(f"PASS {m.group(2)}.{m.group(1)}")
+          text = "\n".join(out) or "No instrumented results found"
+          print(text)
+          enc = text.replace('%', '%25').replace('\r', '').replace('\n', '%0A')
+          print(f"::notice title=Instrumented results::{enc[:60000]}")
+          PY
+      - name: Upload instrumented reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumented-reports
+          path: |
+            connected.log
+            release-smoke.log
+            **/build/reports/androidTests/**
+            **/build/outputs/androidTest-results/**
+          retention-days: 7
+
+  release:
+    name: Publish APK release
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdm-apk
+          path: dist
+      - name: Collect files
+        shell: bash
+        run: |
+          mkdir -p out
+          find dist -name 'app-github-debug.apk' -exec cp {} out/SDM-debug-build${{ github.run_number }}.apk \;
+          find dist -name 'app-github-release.apk' -exec cp {} out/SDM-release-build${{ github.run_number }}.apk \;
+          find dist -name 'app-play-release.apk' -exec cp {} out/SDM-play-test-build${{ github.run_number }}.apk \;
+          find dist -name '*.aab' -exec cp {} out/SDM-play-build${{ github.run_number }}.aab \;
+          ls -la out
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: SDM build ${{ github.run_number }} (${{ github.ref_name }})
+          prerelease: ${{ github.ref != 'refs/heads/develop' && github.ref != 'refs/heads/main' }}
+          make_latest: true
+          body: |
+            Automated build from `${{ github.ref_name }}` at ${{ github.sha }}.
+            - `SDM-release-*.apk`: the GitHub version (all features, Premium included). Optimized (R8).
+            - `SDM-debug-*.apk`: debug build of the GitHub version.
+            - `SDM-play-*.aab`: the Google Play bundle (Premium through Play billing, no YouTube downloads). Upload it to Play Console; it is signed with the upload key when the signing secrets are set, otherwise with the CI debug key, which Play rejects.
+            - `SDM-play-test-*.apk`: the Play version as an APK, to preview it; purchases only work when installed from Google Play.
+          files: out/*

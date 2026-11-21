@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="tagline">Unduh Lebih Cerdas. Lebih Cepat. Lebih Baik.</string>
+    <string name="share_to_sdm">Unduh dengan SDM</string>
+    <string name="widget_description">Unduhan aktif dengan progres, kecepatan, serta jeda/lanjutkan</string>
+    <string name="tile_paste_link">Unduh link yang disalin</string>
+</resources>

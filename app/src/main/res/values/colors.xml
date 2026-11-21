@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="sdm_blue">#375C9E</color>
+    <color name="sdm_navy">#10264D</color>
+    <color name="sdm_splash_bg">#F7F8FA</color>
+    <color name="sdm_splash_brand">#2C4E8E</color>
+</resources>

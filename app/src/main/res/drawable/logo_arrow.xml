@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generated from the SDM logo (docs/brand/sdm-logo.png); see docs/brand/README.md. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="192dp" android:height="78dp" android:viewportWidth="770" android:viewportHeight="310">
+    <group android:translateX="-118" android:translateY="-345">
+        <path android:fillType="evenOdd" android:fillColor="#FFFFFFFF" android:pathData="M518.9,463.5C519.0,463.3 517.7,462.9 516.1,462.5C510.7,461.4 509.2,461.1 506.1,460.4L502.9,459.8L503.2,458.0C503.4,457.0 503.8,455.4 504.0,454.2C504.2,453.1 504.7,451.0 505.0,449.5C505.2,448.0 505.8,445.6 506.1,444.2C506.4,442.9 506.7,441.0 506.7,440.0C506.7,438.4 506.6,438.2 505.0,437.9C501.8,437.3 497.3,436.4 495.0,436.0C488.8,434.7 489.1,434.7 488.6,436.8C488.3,437.9 487.9,440.1 487.5,441.8C487.2,443.4 486.7,445.6 486.5,446.8C486.3,447.9 485.8,450.1 485.5,451.8C484.6,456.2 484.6,456.2 483.4,455.8C482.8,455.6 481.0,455.2 479.5,454.9C478.0,454.6 475.7,454.2 474.5,453.9C473.3,453.7 471.3,453.3 470.1,453.2L467.9,452.9L472.6,460.1C475.2,464.0 479.3,470.3 481.7,474.0C484.1,477.7 486.7,481.5 487.3,482.4L488.5,484.0L503.6,473.9C512.0,468.4 518.8,463.7 518.9,463.5Z" />
+    </group>
+</vector>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Download secrets are encrypted with a device-bound key and are useless elsewhere: exclude the database. -->
+<full-backup-content>
+    <exclude domain="database" path="sdm.db" />
+    <exclude domain="database" path="sdm.db-wal" />
+    <exclude domain="database" path="sdm.db-shm" />
+    <!-- The private folder never leaves the device. -->
+    <exclude domain="file" path="private/" />
+</full-backup-content>
